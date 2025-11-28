@@ -10,8 +10,8 @@
 
 新機能の追加、設定の変更、依存関係の更新を行った際は、必ずこのファイルを更新してください。
 
-**最終更新日**: 2025-11-27
-**最終更新者**: Claude Code (Phase 6完了時点)
+**最終更新日**: 2025-11-28
+**最終更新者**: Claude Code (Phase 7実装完了)
 
 ---
 
@@ -33,7 +33,7 @@ Habit Tracker は、ユーザーが日々の習慣を記録・管理できるモ
 
 ### 主な機能
 
-**✅ 実装済み (Phase 1-6)**
+**✅ 実装済み (Phase 1-7)**
 
 - **ユーザー認証**: Firebase 匿名認証によるユーザー管理
 - **カード管理**:
@@ -55,12 +55,19 @@ Habit Tracker は、ユーザーが日々の習慣を記録・管理できるモ
   - カレンダービュー（月切り替え可能）
   - 記録日のマーク表示
   - 統計情報の可視化
+- **エール機能** ⚠️ 実機テスト待ち:
+  - システムエール送信（Cloud Functions）
+  - パターン①：記録直後エール（5〜45分遅延）
+  - パターン②：継続途切れ翌日（週2回上限）
+  - パターン④：ランダムエール（6時間ごと）
+  - エール一覧表示（未読/既読管理）
+  - プッシュ通知基盤（Expo Notifications）
+  - お休みモード（23:00〜7:00）
 
 **🔜 今後実装予定**
 
-- エール機能（同じ習慣を実践する仲間との交流）
-- 通知機能
-- 設定画面
+- エール機能の完全実装（パターン③、まとめて通知、設定UI）
+- 設定画面の完全実装
 
 ---
 
@@ -74,7 +81,11 @@ Habit Tracker は、ユーザーが日々の習慣を記録・管理できるモ
 | UI Library | React | 19.1.0 |
 | 言語 | TypeScript | 5.9.2 |
 | Backend | Firebase | 12.6.0 |
+| Cloud Functions | firebase-functions | 6.3.0 |
+| Admin SDK | firebase-admin | 12.7.0 |
 | Storage | AsyncStorage | 2.2.0 |
+| Notifications | Expo Notifications | 0.32.13 |
+| Device Info | Expo Device | 8.0.9 |
 
 ---
 
@@ -167,6 +178,14 @@ npm run web
 # Firestore に初期データを投入
 npm run seed:categories   # カテゴリデータ（50件）
 npm run seed:templates    # テンプレートデータ（22件）
+
+# Cloud Functions 関連
+cd functions
+npm install                        # Functions の依存関係インストール
+npm run build                      # TypeScript ビルド
+npm run serve                      # エミュレータで起動
+firebase deploy --only functions   # Functions デプロイ
+firebase deploy --only firestore   # Firestore ルール・インデックスデプロイ
 ```
 
 ---
@@ -180,12 +199,12 @@ habit-tracker/
 │   │   ├── _layout.tsx           # タブレイアウト
 │   │   ├── home.tsx              # ホーム画面（カード一覧）
 │   │   ├── cheers.tsx            # エール画面（未実装）
-│   │   ├── notifications.tsx    # 通知画面（未実装）
+│   │   ├── notifications.tsx    # 通知一覧画面（実装済み）
 │   │   └── settings.tsx          # 設定画面（未実装）
 │   ├── card-detail/
 │   │   └── [id].tsx              # カード詳細画面（動的ルート）
 │   ├── add-card.tsx              # カード追加画面
-│   └── _layout.tsx               # ルートレイアウト（Firebase初期化）
+│   └── _layout.tsx               # ルートレイアウト（Firebase・通知初期化）
 │
 ├── src/                          # ソースコード
 │   ├── components/               # 再利用可能なコンポーネント
@@ -194,21 +213,35 @@ habit-tracker/
 │   │   ├── useCards.ts           # カード一覧取得
 │   │   ├── useCardLogs.ts        # カードログ取得
 │   │   ├── useStats.ts           # 統計取得
-│   │   └── useTemplates.ts       # テンプレート取得
+│   │   ├── useTemplates.ts       # テンプレート取得
+│   │   └── useReactions.ts       # エール取得・既読管理
 │   ├── lib/
-│   │   └── firebase.ts           # Firebase 設定・認証ロジック
+│   │   ├── firebase.ts           # Firebase 設定・認証ロジック
+│   │   └── notifications.ts      # プッシュ通知機能
 │   ├── services/                 # ビジネスロジック
 │   │   ├── logService.ts         # ログ記録・ストリーク計算
 │   │   └── statsService.ts       # 統計計算
 │   └── types/
 │       └── index.ts              # TypeScript型定義
 │
+├── functions/                    # Cloud Functions（Phase 7）
+│   ├── src/
+│   │   ├── index.ts              # エントリーポイント
+│   │   └── services/
+│   │       └── cheerService.ts   # エール送信ロジック
+│   ├── package.json              # Functions 依存関係
+│   └── tsconfig.json             # Functions TypeScript 設定
+│
 ├── scripts/                      # データシード用スクリプト
 │   ├── seedCategories.ts         # カテゴリデータ投入
 │   └── seedTemplates.ts          # テンプレートデータ投入
 │
 ├── docs/                         # ドキュメント
-│   ├── README.md                 # このファイル
+│   ├── INDEX.md                  # ドキュメント一覧
+│   ├── workflow_guide.md         # 開発ワークフローガイド
+│   ├── development_report_*.md   # 開発報告書（日付付き）
+│   ├── request_developer_phase7_v1.1.md  # Phase 7 要件書
+│   ├── templates/                # テンプレート集
 │   ├── mvp_specification.md      # MVP仕様書
 │   ├── project_proposal.md       # プロジェクト提案書
 │   └── screen_design.md          # 画面設計書
@@ -220,6 +253,9 @@ habit-tracker/
 ├── .env                          # 環境変数（gitignore済み）
 ├── .env.example                  # 環境変数のテンプレート
 ├── app.json                      # Expo 設定
+├── firebase.json                 # Firebase 設定
+├── firestore.rules               # Firestore セキュリティルール
+├── firestore.indexes.json        # Firestore インデックス
 ├── package.json                  # 依存関係
 └── tsconfig.json                 # TypeScript 設定
 ```
@@ -254,6 +290,17 @@ habit-tracker/
 **`src/hooks/useTemplates.ts`**
 - カードテンプレート一覧を取得
 
+**`src/hooks/useReactions.ts`**
+- ユーザーが受け取ったエール一覧をリアルタイム取得
+- エール既読管理機能
+
+#### 通知関連
+
+**`src/lib/notifications.ts`**
+- プッシュ通知の初期化とパーミッション要求
+- FCMトークンの取得・保存
+- 通知受信リスナーの設定
+
 #### サービス層
 
 **`src/services/logService.ts`**
@@ -278,6 +325,27 @@ habit-tracker/
 **`app/add-card.tsx`**
 - カード追加画面
 - テンプレート選択、公開設定
+
+**`app/(tabs)/notifications.tsx`**
+- 通知一覧画面
+- エール表示（未読/既読管理）
+- カードタイトル表示
+
+#### Cloud Functions
+
+**`functions/src/index.ts`**
+- Cloud Functionsのエントリーポイント
+- `onLogCreated`: ログ作成時のトリガー
+- `sendDelayedCheer`: スケジュール済みエールの配信（1分ごと）
+- `checkStreakBreak`: パターン②③の判定（毎朝9時）
+- `sendRandomCheer`: パターン④のランダムエール（6時間ごと）
+
+**`functions/src/services/cheerService.ts`**
+- エール送信のビジネスロジック
+- エール文言選択（重み付け、重複回避）
+- リアクション種別選択
+- 1日上限チェック（3件/日）
+- お休みモード判定
 
 ---
 
