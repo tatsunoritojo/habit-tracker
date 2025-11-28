@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { ensureAnonymousLoginAndUser } from '../src/lib/firebase';
+import { initializeNotifications, setupNotificationListeners } from '../src/lib/notifications';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -13,6 +14,10 @@ export default function RootLayout() {
       try {
         console.log('RootLayout: init start');
         await ensureAnonymousLoginAndUser();
+
+        // Phase 7: プッシュ通知の初期化
+        await initializeNotifications();
+
         console.log('RootLayout: init done');
       } catch (e) {
         console.error('Firebase init error', e);
@@ -23,6 +28,13 @@ export default function RootLayout() {
     };
 
     run();
+
+    // Phase 7: 通知リスナーのセットアップ
+    const cleanupNotificationListeners = setupNotificationListeners();
+
+    return () => {
+      cleanupNotificationListeners();
+    };
   }, []);
 
   if (!ready) {

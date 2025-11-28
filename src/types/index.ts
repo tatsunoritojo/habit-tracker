@@ -18,6 +18,16 @@ export type UserSettings = {
   cheer_frequency: 'high' | 'medium' | 'low' | 'off';
   push_enabled: boolean;
   timezone: string; // "Asia/Tokyo"
+
+  // Phase 7: エール通知設定
+  notification_mode: 'realtime' | 'batch'; // リアルタイム or まとめて通知
+  batch_times: string[]; // まとめて通知の配信時刻 例: ["12:00", "18:00", "22:00"]
+  quiet_hours_enabled: boolean; // お休みモード（デフォルト: true）
+  quiet_hours_start: string; // お休み開始時刻（デフォルト: "23:00"）
+  quiet_hours_end: string; // お休み終了時刻（デフォルト: "07:00"）
+
+  // FCMトークン
+  fcm_token?: string | null; // デバイストークン
 };
 
 export type UserStats = {
@@ -128,17 +138,26 @@ export type MatchingPoolCard = {
 export type Reaction = {
   reaction_id: string;
 
-  from_uid: string;
+  from_uid: string; // システムエール: "system"
   to_uid: string;
   to_card_id: string;
 
   type: ReactionType;
+
+  // Phase 7: システムエール拡張
+  reason?: CheerReason; // エール送信理由（システムエールのみ）
+  message?: string; // エール文言（システムエールのみ）
+  scheduled_for?: Timestamp | null; // まとめて通知用の配信予定時刻
+  delivered?: boolean; // 配信済みフラグ
 
   created_at: Timestamp;
   is_read: boolean;
 };
 
 export type ReactionType = 'cheer' | 'amazing' | 'support';
+
+// Phase 7: エール送信理由
+export type CheerReason = 'record' | 'streak_break' | 'long_absence' | 'random';
 
 // リアクション表示情報
 export type ReactionInfo = {
@@ -168,6 +187,37 @@ export const REACTIONS: Record<ReactionType, ReactionInfo> = {
     icon: '🤝',
     description: '伴走感・仲間感。同じカテゴリで頑張っている共感。',
   },
+};
+
+// ========================================
+// CheerState（エール状態管理）- Phase 7
+// ========================================
+export type CheerState = {
+  user_uid: string;
+
+  // 1日あたりの送信カウント
+  daily_count: number;
+  daily_count_date: string; // "YYYY-MM-DD"
+
+  // パターン②用：週あたりの送信カウント
+  weekly_streak_break_count: number;
+  weekly_streak_break_reset_date: string; // 週の開始日 "YYYY-MM-DD"
+
+  // パターン④用：最終ランダムエール日時
+  last_random_cheer_at: Timestamp | null;
+
+  // パターン③用：カード別の長期離脱エール送信履歴
+  long_absence_cheers: {
+    [card_id: string]: {
+      count: number; // 送信回数（最大3）
+      last_sent_at: Timestamp;
+    };
+  };
+
+  // ユーザーの主要記録時間帯（学習結果）
+  primary_recording_hour: number | null; // 0-23、nullはデータ不足
+
+  updated_at: Timestamp;
 };
 
 // ========================================

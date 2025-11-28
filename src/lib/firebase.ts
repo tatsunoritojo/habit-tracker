@@ -71,6 +71,13 @@ export const ensureAnonymousLoginAndUser = async () => {
         cheer_frequency: 'medium',
         push_enabled: true,
         timezone: 'Asia/Tokyo',
+        // Phase 7: エール通知設定のデフォルト値
+        notification_mode: 'realtime',
+        batch_times: [],
+        quiet_hours_enabled: true,
+        quiet_hours_start: '23:00',
+        quiet_hours_end: '07:00',
+        fcm_token: null,
       },
       stats: {
         total_cards: 0,
