@@ -188,7 +188,67 @@ export const checkStreakBreak = functions.pubsub
           const cardId = cardDoc.id;
           const lastLogDate = cardData.last_log_date;
 
-          // 前日に未記録かチェック
+          // 最終記録日を取得
+          if (!lastLogDate) continue; // 一度も記録がない場合はスキップ
+
+          // 最終記録日からの経過日数を計算
+          const lastLog = new Date(lastLogDate);
+          const daysSinceLastLog = Math.floor((today.getTime() - lastLog.getTime()) / (1000 * 60 * 60 * 24));
+
+          // パターン③：長期離脱（7日/21日/35日）
+          if (daysSinceLastLog === 7 || daysSinceLastLog === 21 || daysSinceLastLog === 35) {
+            const cheerState = await db.collection('cheer_state').doc(userId).get();
+            const stateData = cheerState.exists ? cheerState.data() : null;
+
+            if (stateData) {
+              const longAbsenceCheers = stateData.long_absence_cheers || {};
+              const cardCheers = longAbsenceCheers[cardId] || { count: 0 };
+
+              // 最大3回まで
+              if (cardCheers.count >= 3) {
+                console.log(`checkStreakBreak: パターン③の上限に達しているためスキップ uid=${userId} card=${cardId}`);
+                continue;
+              }
+            }
+
+            // エール送信
+            const reactionType = selectReactionType('long_absence');
+            const message = await selectMessage(userId, 'long_absence', reactionType);
+
+            await db.collection('reactions').add({
+              from_uid: 'system',
+              to_uid: userId,
+              to_card_id: cardId,
+              type: reactionType,
+              reason: 'long_absence',
+              message,
+              scheduled_for: null,
+              delivered: true,
+              created_at: admin.firestore.FieldValue.serverTimestamp(),
+              is_read: false,
+            });
+
+            // カウント更新
+            await incrementDailyCount(userId);
+
+            // 長期離脱エールのカウントを更新
+            await db.collection('cheer_state').doc(userId).set({
+              [`long_absence_cheers.${cardId}`]: {
+                count: admin.firestore.FieldValue.increment(1),
+                last_sent_at: admin.firestore.FieldValue.serverTimestamp(),
+              },
+              updated_at: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            // FCM送信
+            const cardTitle = cardData.title || '習慣カード';
+            await sendPushNotification(userId, cardTitle, message);
+
+            console.log(`checkStreakBreak: パターン③送信 (${daysSinceLastLog}日) uid=${userId} card=${cardId}`);
+            continue; // パターン③を送信したらパターン②はスキップ
+          }
+
+          // 前日に未記録かチェック（パターン②用）
           if (lastLogDate === yesterdayStr) continue; // 前日に記録あり
 
           // パターン②：継続途切れ翌日（週2回まで）
@@ -355,8 +415,80 @@ function getWeekStart(date: Date): Date {
   return weekStart;
 }
 
+// ========================================
+// 5. deliverBatchNotifications - まとめて通知の配信
+// 毎時0分に実行
+// ========================================
+export const deliverBatchNotifications = functions.pubsub
+  .schedule('0 * * * *') // 毎時0分
+  .timeZone('Asia/Tokyo')
+  .onRun(async (context) => {
+    try {
+      console.log('deliverBatchNotifications: 開始');
+
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      // notification_mode が 'batch' のユーザーを取得
+      const usersSnapshot = await db.collection('users').get();
+
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+        const userData = userDoc.data();
+        const settings = userData.settings;
+
+        // まとめて通知モードでない場合はスキップ
+        if (settings?.notification_mode !== 'batch') continue;
+
+        // batch_times の設定時刻に一致するかチェック
+        const batchTimes = settings.batch_times || [];
+        const shouldSend = batchTimes.some((time: string) => {
+          // 時刻を比較（分単位で15分の許容範囲を持たせる）
+          const [hour, minute] = time.split(':').map(Number);
+          return hour === currentHour && Math.abs(minute - currentMinute) <= 15;
+        });
+
+        if (!shouldSend) continue;
+
+        // 今日の未読エールを取得
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const reactionsSnapshot = await db
+          .collection('reactions')
+          .where('to_uid', '==', userId)
+          .where('from_uid', '==', 'system')
+          .where('is_read', '==', false)
+          .where('delivered', '==', true)
+          .where('created_at', '>=', admin.firestore.Timestamp.fromDate(today))
+          .get();
+
+        const unreadCount = reactionsSnapshot.size;
+
+        if (unreadCount === 0) {
+          console.log(`deliverBatchNotifications: 未読エールなし uid=${userId}`);
+          continue;
+        }
+
+        // まとめて通知を送信
+        await sendBatchNotification(userId, unreadCount);
+
+        console.log(`deliverBatchNotifications: まとめて通知送信 uid=${userId} count=${unreadCount}`);
+      }
+
+      console.log('deliverBatchNotifications: 完了');
+    } catch (error) {
+      console.error('deliverBatchNotifications error:', error);
+    }
+  });
+
+// ========================================
+// ヘルパー関数
+// ========================================
+
 /**
- * FCMプッシュ通知送信（簡易実装）
+ * FCMプッシュ通知送信（個別エール）
  */
 async function sendPushNotification(userId: string, cardTitle: string, message: string): Promise<void> {
   try {
@@ -390,5 +522,42 @@ async function sendPushNotification(userId: string, cardTitle: string, message: 
   } catch (error) {
     console.error('sendPushNotification error:', error);
     // FCM送信失敗はスキップ（エール自体は保存済み）
+  }
+}
+
+/**
+ * FCMまとめて通知送信
+ */
+async function sendBatchNotification(userId: string, count: number): Promise<void> {
+  try {
+    // ユーザーのFCMトークンを取得
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists) return;
+
+    const userData = userSnap.data();
+    if (!userData) return;
+
+    const fcmToken = userData.settings?.fcm_token;
+    if (!fcmToken) {
+      console.log(`sendBatchNotification: FCMトークンなし uid=${userId}`);
+      return;
+    }
+
+    // プッシュ通知を送信
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: {
+        title: `🎉 今日のエールが届いています（${count}件）`,
+        body: 'ハビット仲間からの応援をチェックしてみましょう',
+      },
+      data: {
+        type: 'batch_cheer',
+        count: count.toString(),
+      },
+    });
+
+    console.log(`sendBatchNotification: 送信成功 uid=${userId} count=${count}`);
+  } catch (error) {
+    console.error('sendBatchNotification error:', error);
   }
 }

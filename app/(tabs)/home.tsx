@@ -1,5 +1,5 @@
 // app/(tabs)/home.tsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useCards } from '../../src/hooks/useCards';
 import { useStats } from '../../src/hooks/useStats';
+import { useReactions } from '../../src/hooks/useReactions';
 import { recordLog } from '../../src/services/logService';
 import { auth } from '../../src/lib/firebase';
 
@@ -21,11 +22,37 @@ export default function HomeScreen() {
   const router = useRouter();
   const { cards, loading, error } = useCards();
   const { stats } = useStats();
+  const { reactions } = useReactions();
   const [recording, setRecording] = useState(false);
   const notificationCount = 0; // 将来実装
 
   // 今日の日付（YYYY-MM-DD形式）
   const today = new Date().toISOString().split('T')[0];
+
+  // カードごとの最新エールを取得
+  const latestCheersByCard = useMemo(() => {
+    const cheerMap: Record<string, { icons: string; from: string }> = {};
+
+    cards.forEach((card) => {
+      const cardCheers = reactions
+        .filter((r) => r.to_card_id === card.card_id)
+        .sort((a, b) => {
+          const aTime = a.created_at?.toDate().getTime() || 0;
+          const bTime = b.created_at?.toDate().getTime() || 0;
+          return bTime - aTime;
+        })
+        .slice(0, 2); // 最新2件
+
+      if (cardCheers.length > 0) {
+        const icons = cardCheers
+          .map((c) => (c.type === 'amazing' ? '⭐' : c.type === 'cheer' ? '💪' : '🤝'))
+          .join('');
+        cheerMap[card.card_id] = { icons, from: 'ハビット仲間' };
+      }
+    });
+
+    return cheerMap;
+  }, [cards, reactions]);
 
   // カードタップハンドラ
   const handleCardPress = (card: any) => {
@@ -74,6 +101,7 @@ export default function HomeScreen() {
   // カードコンポーネント
   const renderCard = ({ item }: { item: any }) => {
     const isLoggedToday = item.last_log_date === today;
+    const cheer = latestCheersByCard[item.card_id];
 
     return (
       <TouchableOpacity
@@ -90,7 +118,13 @@ export default function HomeScreen() {
             今日: {isLoggedToday ? '✔' : '□'}  連続: {item.current_streak}日
           </Text>
         </View>
-        {/* TODO: エール表示は将来実装 */}
+        {cheer && (
+          <View style={styles.cardCheer}>
+            <Text style={styles.cardCheerText}>
+              エール: {cheer.icons}  from {cheer.from}
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -308,6 +342,17 @@ const styles = StyleSheet.create({
   cardStatText: {
     fontSize: 14,
     color: '#666666',
+  },
+  cardCheer: {
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  cardCheerText: {
+    fontSize: 13,
+    color: '#4A90E2',
+    fontWeight: '500',
   },
   addCardButton: {
     backgroundColor: '#FFFFFF',

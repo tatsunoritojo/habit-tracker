@@ -5,6 +5,8 @@ import { auth, db } from '../lib/firebase';
 export interface UserSettings {
     push_enabled: boolean;
     cheer_frequency?: 'high' | 'medium' | 'low';
+    notification_mode?: 'realtime' | 'batch';
+    batch_times?: string[];
     quiet_hours_enabled?: boolean;
     quiet_hours_start?: string;
     quiet_hours_end?: string;
@@ -12,6 +14,11 @@ export interface UserSettings {
 
 const DEFAULT_SETTINGS: UserSettings = {
     push_enabled: true,
+    notification_mode: 'realtime',
+    batch_times: [],
+    quiet_hours_enabled: true,
+    quiet_hours_start: '23:00',
+    quiet_hours_end: '07:00',
 };
 
 export function useSettings() {
