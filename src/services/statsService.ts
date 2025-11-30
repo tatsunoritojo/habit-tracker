@@ -42,14 +42,14 @@ export async function calculateUserStats(ownerUid: string): Promise<UserStats> {
     const logs = logsSnapshot.docs.map((doc) => doc.data() as Log);
 
     // 今週のログをフィルタ
-    const weekLogs = logs.filter((log) => log.logged_date >= weekStartStr);
+    const weekLogs = logs.filter((log) => log.date >= weekStartStr);
 
     // 今月のログをフィルタ
-    const monthLogs = logs.filter((log) => log.logged_date >= monthStartStr);
+    const monthLogs = logs.filter((log) => log.date >= monthStartStr);
 
     // ユニークな日付をカウント（複数のカードで同じ日に記録しても1日とカウント）
-    const weekDays = new Set(weekLogs.map((log) => log.logged_date)).size;
-    const monthDays = new Set(monthLogs.map((log) => log.logged_date)).size;
+    const weekDays = new Set(weekLogs.map((log) => log.date)).size;
+    const monthDays = new Set(monthLogs.map((log) => log.date)).size;
 
     return {
       weekDays,
