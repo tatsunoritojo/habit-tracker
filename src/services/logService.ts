@@ -27,8 +27,8 @@ export async function recordLog(cardId: string, ownerUid: string): Promise<void>
     const logData = {
       card_id: cardId,
       owner_uid: ownerUid,
-      logged_date: today,
-      created_at: now,
+      date: today,
+      logged_at: now,
     };
 
     await addDoc(collection(db, 'logs'), logData);
@@ -74,7 +74,7 @@ async function calculateCardStats(
     const logsSnapshot = await getDocs(logsQuery);
     const logs = logsSnapshot.docs
       .map((doc) => doc.data() as Log)
-      .sort((a, b) => b.logged_date.localeCompare(a.logged_date)); // 降順ソート
+      .sort((a, b) => b.date.localeCompare(a.date)); // 降順ソート
 
     const totalLogs = logs.length;
 
@@ -83,7 +83,7 @@ async function calculateCardStats(
     }
 
     // ログ日付をDate配列に変換（降順 = 新しい順）
-    const logDates = logs.map((log) => new Date(log.logged_date));
+    const logDates = logs.map((log) => new Date(log.date));
 
     // 現在のストリークを計算
     const currentStreak = calculateCurrentStreak(logDates);

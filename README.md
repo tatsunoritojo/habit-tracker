@@ -10,8 +10,8 @@
 
 新機能の追加、設定の変更、依存関係の更新を行った際は、必ずこのファイルを更新してください。
 
-**最終更新日**: 2025-11-28
-**最終更新者**: Claude Code (Phase 7 完全実装完了 ✅)
+**最終更新日**: 2025-11-30
+**最終更新者**: Claude Code (テスト基盤整備 Phase 3 完了 ✅)
 
 ---
 
@@ -190,6 +190,11 @@ npm run web
 npm run seed:categories   # カテゴリデータ（50件）
 npm run seed:templates    # テンプレートデータ（22件）
 
+# テスト実行
+npm test                   # 全テスト実行
+npm run test:watch         # ウォッチモードでテスト
+npm run test:coverage      # カバレッジレポート生成
+
 # Cloud Functions 関連
 cd functions
 npm install                        # Functions の依存関係インストール
@@ -198,6 +203,38 @@ npm run serve                      # エミュレータで起動
 firebase deploy --only functions   # Functions デプロイ
 firebase deploy --only firestore   # Firestore ルール・インデックスデプロイ
 ```
+
+---
+
+## テスト
+
+### テスト実行
+
+```bash
+# 全テスト実行
+npm test
+
+# ウォッチモードでテスト（開発時）
+npm run test:watch
+
+# カバレッジレポート生成
+npm run test:coverage
+```
+
+### テスト対象
+
+現在、以下のサービス層に対してスモークテストを実装しています：
+
+- **`src/services/logService.ts`**: ログ記録とストリーク計算
+- **`src/services/statsService.ts`**: 週次・月次統計計算
+
+### CI/CD
+
+GitHub Actions により、Pull Request 作成時に自動でテストが実行されます。
+
+- ワークフロー: `.github/workflows/test.yml`
+- トリガー: `pull_request` イベント（master/main ブランチ）
+
 
 ---
 
