@@ -12,6 +12,7 @@ module.exports = {
         '**/__tests__/**/*.(test|spec).(ts|tsx|js)',
         '**/*.(test|spec).(ts|tsx|js)',
     ],
+    modulePathIgnorePatterns: ['<rootDir>/functions/'],
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
     },
