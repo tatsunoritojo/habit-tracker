@@ -128,8 +128,11 @@ export type MatchingPool = {
 export type MatchingPoolCard = {
   card_id: string;
   owner_uid: string;
+  title?: string;
   current_streak: number;
   last_log_date: string;
+  total_logs?: number;
+  is_comeback?: boolean;
 };
 
 // ========================================
@@ -218,6 +221,22 @@ export type CheerState = {
   primary_recording_hour: number | null; // 0-23、nullはデータ不足
 
   updated_at: Timestamp;
+};
+
+// ========================================
+// CheerSendState（人間エール送信状態）- Phase 8
+// ========================================
+export type CheerSendState = {
+  user_uid: string;
+  daily_send_count: number;
+  daily_send_date: string;
+  sent_pairs: SentPair[];
+  updated_at: Timestamp;
+};
+
+export type SentPair = {
+  to_card_id: string;
+  sent_at: Timestamp;
 };
 
 // ========================================

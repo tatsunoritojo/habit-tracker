@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useCards } from '../../src/hooks/useCards';
 import { useStats } from '../../src/hooks/useStats';
 import { useReactions } from '../../src/hooks/useReactions';
+import { useCheerSuggestions } from '../../src/hooks/useCheerSuggestions';
 import { recordLog } from '../../src/services/logService';
 import { auth } from '../../src/lib/firebase';
 
@@ -23,6 +24,7 @@ export default function HomeScreen() {
   const { cards, loading, error } = useCards();
   const { stats } = useStats();
   const { reactions } = useReactions();
+  const { suggestions } = useCheerSuggestions(); // エール提案を取得
   const [recording, setRecording] = useState(false);
   const notificationCount = 0; // 将来実装
 
@@ -206,6 +208,26 @@ export default function HomeScreen() {
         </Text>
       </View>
 
+      {/* エール提案バナー (Phase 8) */}
+      {suggestions.length > 0 && (
+        <TouchableOpacity
+          style={styles.banner}
+          onPress={() => router.push('/cheers')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerEmoji}>📢</Text>
+            <View>
+              <Text style={styles.bannerTitle}>エールを送ろう</Text>
+              <Text style={styles.bannerText}>
+                {suggestions.length}人の仲間が頑張っています！
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.bannerArrow}>›</Text>
+        </TouchableOpacity>
+      )}
+
       {/* カードリスト */}
       <FlatList
         data={cards}
@@ -307,6 +329,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
     marginTop: 4,
+  },
+  banner: {
+    margin: 16,
+    marginBottom: 0,
+    backgroundColor: '#FFF9E6',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  bannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bannerEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 2,
+  },
+  bannerText: {
+    fontSize: 12,
+    color: '#666666',
+  },
+  bannerArrow: {
+    fontSize: 24,
+    color: '#CCCCCC',
+    fontWeight: '300',
   },
   cardList: {
     paddingHorizontal: 16,

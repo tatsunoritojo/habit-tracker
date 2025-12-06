@@ -17,29 +17,44 @@ import { db } from '../../src/lib/firebase';
 
 export default function NotificationsScreen() {
   const { reactions, loading } = useReactions();
-  const [cardTitles, setCardTitles] = useState<Record<string, string>>({});
+  const [cardDetails, setCardDetails] = useState<Record<string, { title: string; categoryName?: string }>>({});
 
-  // カードタイトルを取得
+  // カード情報（タイトル、カテゴリ）を取得
   useEffect(() => {
-    const fetchCardTitles = async () => {
-      const titles: Record<string, string> = {};
+    const fetchCardDetails = async () => {
+      const details: Record<string, { title: string; categoryName?: string }> = {};
+
       for (const reaction of reactions) {
-        if (!titles[reaction.to_card_id]) {
+        if (!details[reaction.to_card_id]) {
           try {
             const cardSnap = await getDoc(doc(db, 'cards', reaction.to_card_id));
             if (cardSnap.exists()) {
-              titles[reaction.to_card_id] = cardSnap.data().title;
+              const cardData = cardSnap.data();
+              let categoryName = '習慣';
+
+              // 人間エールの場合はカテゴリ名も取得
+              if (reaction.from_uid !== 'system' && cardData.category_l3) {
+                const catSnap = await getDoc(doc(db, 'categories', cardData.category_l3));
+                if (catSnap.exists()) {
+                  categoryName = catSnap.data().name_ja;
+                }
+              }
+
+              details[reaction.to_card_id] = {
+                title: cardData.title,
+                categoryName
+              };
             }
           } catch (error) {
-            console.error('カードタイトル取得エラー:', error);
+            console.error('カード情報取得エラー:', error);
           }
         }
       }
-      setCardTitles(titles);
+      setCardDetails(details);
     };
 
     if (reactions.length > 0) {
-      fetchCardTitles();
+      fetchCardDetails();
     }
   }, [reactions]);
 
@@ -87,8 +102,11 @@ export default function NotificationsScreen() {
         keyExtractor={(item) => item.reaction_id}
         renderItem={({ item }) => {
           const reactionInfo = REACTIONS[item.type];
-          const cardTitle = cardTitles[item.to_card_id] || '習慣カード';
-          const senderName = item.from_uid === 'system' ? 'ハビット仲間' : '仲間';
+          const details = cardDetails[item.to_card_id];
+          const cardTitle = details?.title || '習慣カード';
+          const senderName = item.from_uid === 'system'
+            ? 'ハビット仲間'
+            : `${details?.categoryName || '習慣'}の仲間`;
 
           return (
             <TouchableOpacity

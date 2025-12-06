@@ -10,6 +10,8 @@ import {
   incrementDailyCount,
   isQuietHours,
 } from './services/cheerService';
+import { updateMatchingPoolsLogic } from './services/updateMatchingPools';
+import { onHumanCheerSentLogic } from './services/humanCheerService';
 
 // Firebase Admin初期化
 admin.initializeApp();
@@ -561,3 +563,24 @@ async function sendBatchNotification(userId: string, count: number): Promise<voi
     console.error('sendBatchNotification error:', error);
   }
 }
+
+// ========================================
+// 6. updateMatchingPools - マッチングプール更新
+// 30分ごとに実行
+// ========================================
+export const updateMatchingPools = functions.pubsub
+  .schedule('*/30 * * * *')
+  .timeZone('Asia/Tokyo')
+  .onRun(async (context) => {
+    await updateMatchingPoolsLogic();
+  });
+
+// ========================================
+// 7. onHumanCheerSent - 人間エール送信時のトリガー
+// reactionsドキュメント作成時に発火
+// ========================================
+export const onHumanCheerSent = functions.firestore
+  .document('reactions/{reactionId}')
+  .onCreate(async (snapshot, context) => {
+    await onHumanCheerSentLogic(snapshot, context);
+  });
