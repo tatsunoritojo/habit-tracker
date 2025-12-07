@@ -40,6 +40,8 @@ export function useReactions() {
           message: docData.message,
           scheduled_for: docData.scheduled_for,
           delivered: docData.delivered,
+          card_title: docData.card_title,
+          card_category_name: docData.card_category_name,
           created_at: docData.created_at,
           is_read: docData.is_read,
         } as Reaction;

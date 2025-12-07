@@ -74,7 +74,8 @@ async function calculateCardStats(
     const logsSnapshot = await getDocs(logsQuery);
     const logs = logsSnapshot.docs
       .map((doc) => doc.data() as Log)
-      .sort((a, b) => b.date.localeCompare(a.date)); // 降順ソート
+      .filter((log) => log.date) // dateが存在するもののみ
+      .sort((a, b) => b.date!.localeCompare(a.date!)); // 降順ソート
 
     const totalLogs = logs.length;
 

@@ -46,7 +46,7 @@ export const db = getFirestore(app);
  * - users/{uid} ドキュメントの新規作成 or last_login_at 更新
  */
 export const ensureAnonymousLoginAndUser = async () => {
-  console.log('ensureAnonymousLoginAndUser: start');
+  // console.log('ensureAnonymousLoginAndUser: start');
 
   // まだログインしていなければ匿名ログイン
   if (!auth.currentUser) {
@@ -54,7 +54,7 @@ export const ensureAnonymousLoginAndUser = async () => {
   }
 
   const user = auth.currentUser;
-  console.log('ensureAnonymousLoginAndUser: user = ', user?.uid);
+  // console.log('ensureAnonymousLoginAndUser: user = ', user?.uid);
 
   if (!user) return;
 
@@ -62,7 +62,7 @@ export const ensureAnonymousLoginAndUser = async () => {
   const snap = await getDoc(userRef);
 
   if (!snap.exists()) {
-    console.log('ensureAnonymousLoginAndUser: create user doc');
+    // console.log('ensureAnonymousLoginAndUser: create user doc');
     await setDoc(userRef, {
       uid: user.uid,
       created_at: serverTimestamp(),
@@ -88,7 +88,7 @@ export const ensureAnonymousLoginAndUser = async () => {
       },
     });
   } else {
-    console.log('ensureAnonymousLoginAndUser: update last_login_at');
+    // console.log('ensureAnonymousLoginAndUser: update last_login_at');
     await setDoc(
       userRef,
       {
@@ -98,5 +98,5 @@ export const ensureAnonymousLoginAndUser = async () => {
     );
   }
 
-  console.log('ensureAnonymousLoginAndUser: done');
+  // console.log('ensureAnonymousLoginAndUser: done');
 };

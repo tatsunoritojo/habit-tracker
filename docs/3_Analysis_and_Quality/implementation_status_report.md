@@ -15,6 +15,7 @@
 ```typescript
 interface User {
   uid: string;
+  display_name?: string; // Phase 9.5: ニックネーム（任意）
   created_at: Timestamp;
   last_login_at: Timestamp;
   settings: UserSettings;
@@ -64,7 +65,11 @@ interface Card {
   is_custom: boolean; // オリジナルカード判定
 
   // 公開設定
-  is_public: boolean;
+  is_public: boolean; // deprecated in Phase 9.5
+
+  // Phase 9.5: 公開設定の細分化
+  is_public_for_cheers?: boolean; // エールを受け取る
+  is_public_for_template?: boolean; // テンプレートとして公開
 
   // 統計（非正規化）
   current_streak: number;
@@ -570,6 +575,18 @@ service cloud.firestore {
 - アカウント削除機能（app/settings/account-deletion.tsx）
 - リマインダー通知（reminder_enabled, reminder_time）
 - カードステータス管理（active / archived）
+
+**Phase 9.5（カード管理強化＆ニックネーム機能）**:
+- ニックネーム機能（User.display_name）
+- カード重複防止（完全一致＆類似度チェック）
+- カード作成上限（50枚）
+- タイトル正規化（前後空白削除）
+- 公開設定細分化（`is_public_for_cheers`, `is_public_for_template`）
+- 類似公開カード重複排除（90%類似度でグループ化）
+- Firebase Admin SDK設定（マイグレーション用）
+- `useUserProfile` フック（ニックネーム管理）
+- `useUserDisplayName` フック（他ユーザー名取得）
+- `cardDuplicateChecker` ユーティリティ（重複検出）
 
 ### 9.2 改善提案
 

@@ -60,9 +60,9 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       // Expo Project IDを使用（Firebase Project IDではない）
       const pushToken = await Notifications.getExpoPushTokenAsync();
       token = pushToken.data;
-      console.log('FCMトークン取得成功:', token);
+      // console.log('FCMトークン取得成功:', token);
     } catch (error) {
-      console.error('FCMトークン取得エラー:', error);
+      console.log('FCMトークン取得失敗 (Project ID未設定の可能性があります):', error);
       return null;
     }
   }
@@ -132,12 +132,12 @@ export async function initializeNotifications(): Promise<void> {
 export function setupNotificationListeners() {
   // フォアグラウンドで通知を受信した時
   const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
-    console.log('通知を受信:', notification);
+    // console.log('通知を受信:', notification);
   });
 
   // 通知をタップした時
   const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-    console.log('通知をタップ:', response);
+    // console.log('通知をタップ:', response);
     // TODO: 画面遷移処理を追加
   });
 

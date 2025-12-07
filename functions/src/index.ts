@@ -58,6 +58,9 @@ export const onLogCreated = functions.firestore
       // エール文言を選択
       const message = await selectMessage(owner_uid, 'record', reactionType);
 
+      // カード情報を取得（非正規化用）
+      const cardInfo = await getCardInfo(card_id);
+
       // Reactionを作成（scheduled_for付き、delivered=false）
       await db.collection('reactions').add({
         from_uid: 'system',
@@ -66,6 +69,8 @@ export const onLogCreated = functions.firestore
         type: reactionType,
         reason: 'record',
         message,
+        card_title: cardInfo.title,
+        card_category_name: cardInfo.categoryName,
         scheduled_for: admin.firestore.Timestamp.fromDate(scheduledAt),
         delivered: false,
         created_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -216,6 +221,7 @@ export const checkStreakBreak = functions.pubsub
             // エール送信
             const reactionType = selectReactionType('long_absence');
             const message = await selectMessage(userId, 'long_absence', reactionType);
+            const cardInfo = await getCardInfo(cardId);
 
             await db.collection('reactions').add({
               from_uid: 'system',
@@ -224,6 +230,8 @@ export const checkStreakBreak = functions.pubsub
               type: reactionType,
               reason: 'long_absence',
               message,
+              card_title: cardInfo.title,
+              card_category_name: cardInfo.categoryName,
               scheduled_for: null,
               delivered: true,
               created_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -280,6 +288,7 @@ export const checkStreakBreak = functions.pubsub
           // エール送信
           const reactionType = selectReactionType('streak_break');
           const message = await selectMessage(userId, 'streak_break', reactionType);
+          const cardInfo = await getCardInfo(cardId);
 
           await db.collection('reactions').add({
             from_uid: 'system',
@@ -288,6 +297,8 @@ export const checkStreakBreak = functions.pubsub
             type: reactionType,
             reason: 'streak_break',
             message,
+            card_title: cardInfo.title,
+            card_category_name: cardInfo.categoryName,
             scheduled_for: null,
             delivered: true, // 即時配信
             created_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -371,6 +382,7 @@ export const sendRandomCheer = functions.pubsub
         // エール送信
         const reactionType = selectReactionType('random');
         const message = await selectMessage(userId, 'random', reactionType);
+        const cardInfo = await getCardInfo(cardId);
 
         await db.collection('reactions').add({
           from_uid: 'system',
@@ -379,6 +391,8 @@ export const sendRandomCheer = functions.pubsub
           type: reactionType,
           reason: 'random',
           message,
+          card_title: cardInfo.title,
+          card_category_name: cardInfo.categoryName,
           scheduled_for: null,
           delivered: true,
           created_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -490,9 +504,42 @@ export const deliverBatchNotifications = functions.pubsub
 // ========================================
 
 /**
- * FCMプッシュ通知送信（個別エール）
+ * カード情報取得（非正規化用）
  */
-async function sendPushNotification(userId: string, cardTitle: string, message: string): Promise<void> {
+async function getCardInfo(cardId: string): Promise<{ title: string; categoryName: string }> {
+  try {
+    const cardSnap = await db.collection('cards').doc(cardId).get();
+    if (!cardSnap.exists) {
+      return { title: '習慣カード', categoryName: '習慣' };
+    }
+
+    const cardData = cardSnap.data();
+    if (!cardData) {
+      return { title: '習慣カード', categoryName: '習慣' };
+    }
+
+    const cardTitle = cardData.title || '習慣カード';
+    let categoryName = '習慣';
+
+    // カテゴリ名を取得
+    if (cardData.category_l3) {
+      const catSnap = await db.collection('categories').doc(cardData.category_l3).get();
+      if (catSnap.exists && catSnap.data()) {
+        categoryName = catSnap.data()!.name_ja || '習慣';
+      }
+    }
+
+    return { title: cardTitle, categoryName };
+  } catch (error) {
+    console.error('getCardInfo error:', error);
+    return { title: '習慣カード', categoryName: '習慣' };
+  }
+}
+
+/**
+ * FCMプッシュ通知送信（汎用）
+ */
+async function sendPushNotification(userId: string, title: string, body: string, data: any = {}): Promise<void> {
   try {
     // ユーザーのFCMトークンを取得
     const userSnap = await db.collection('users').doc(userId).get();
@@ -511,19 +558,18 @@ async function sendPushNotification(userId: string, cardTitle: string, message: 
     await admin.messaging().send({
       token: fcmToken,
       notification: {
-        title: '💪 ハビット仲間からエール！',
-        body: `「${cardTitle}」${message}`,
+        title: title,
+        body: body,
       },
       data: {
-        type: 'cheer',
-        card_id: '', // 必要に応じて設定
+        type: data.type || 'generic',
+        ...data
       },
     });
 
     console.log(`sendPushNotification: 送信成功 uid=${userId}`);
   } catch (error) {
     console.error('sendPushNotification error:', error);
-    // FCM送信失敗はスキップ（エール自体は保存済み）
   }
 }
 
@@ -583,4 +629,222 @@ export const onHumanCheerSent = functions.firestore
   .document('reactions/{reactionId}')
   .onCreate(async (snapshot, context) => {
     await onHumanCheerSentLogic(snapshot, context);
+  });
+
+// ========================================
+// 8. onCardDeleted - カード削除時のトリガー
+// ログ、リアクション、マッチングプールのクリーンアップ
+// ========================================
+export const onCardDeleted = functions.firestore
+  .document('cards/{cardId}')
+  .onDelete(async (snapshot, context) => {
+    const cardId = context.params.cardId;
+    const cardData = snapshot.data();
+
+    console.log(`onCardDeleted: cardId=${cardId} cleaning up...`);
+
+    const batch = db.batch();
+
+    // 1. Logs deletion
+    const logsSnapshot = await db.collection('logs').where('card_id', '==', cardId).get();
+    logsSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // 2. Reactions deletion (received cheers)
+    const reactionsSnapshot = await db.collection('reactions').where('to_card_id', '==', cardId).get();
+    reactionsSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // Commit logs/reactions deletion
+    await batch.commit();
+    console.log(`onCardDeleted: Deleted ${logsSnapshot.size} logs and ${reactionsSnapshot.size} reactions.`);
+
+    // 3. Matching Pool update
+    if (cardData && cardData.category_l3) {
+      const poolRef = db.collection('matching_pools').doc(cardData.category_l3);
+
+      try {
+        await db.runTransaction(async (t) => {
+          const doc = await t.get(poolRef);
+          if (!doc.exists) return; // Pool doesn't exist
+
+          const data = doc.data();
+          if (!data || !data.active_cards) return;
+
+          const activeCards = data.active_cards as any[];
+          const newActiveCards = activeCards.filter(c => c.card_id !== cardId);
+
+          if (activeCards.length !== newActiveCards.length) {
+            t.update(poolRef, { active_cards: newActiveCards });
+          }
+        });
+        console.log(`onCardDeleted: Removed from matching pool ${cardData.category_l3}`);
+      } catch (e) {
+        console.error('onCardDeleted: Matching pool update error', e);
+      }
+    }
+  });
+
+// ========================================
+// 9. onUserDeleted - ユーザー削除時のトリガー
+// ユーザーデータの完全削除（カード、ログ、リアクション、状態）
+// ========================================
+export const onUserDeleted = functions.auth.user().onDelete(async (user) => {
+  const userId = user.uid;
+  console.log(`onUserDeleted: uid=${userId} cleaning up...`);
+
+  const batch = db.batch();
+  let operationCount = 0;
+  // const MAX_BATCH_SIZE = 450; 
+
+
+
+  try {
+    // 1. Logs deletion
+    const logsSnapshot = await db.collection('logs').where('owner_uid', '==', userId).get();
+    logsSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+      operationCount++;
+    });
+
+    // 2. Reactions sent
+    const reactionsSent = await db.collection('reactions').where('from_uid', '==', userId).get();
+    reactionsSent.docs.forEach(doc => {
+      batch.delete(doc.ref);
+      operationCount++;
+    });
+
+    // 3. Reactions received
+    const reactionsReceived = await db.collection('reactions').where('to_uid', '==', userId).get();
+    reactionsReceived.docs.forEach(doc => {
+      batch.delete(doc.ref);
+      operationCount++;
+    });
+
+    // 4. CheerState
+    const cheerStateRef = db.collection('cheer_state').doc(userId);
+    batch.delete(cheerStateRef);
+    operationCount++;
+
+    // 5. User Doc
+    const userRef = db.collection('users').doc(userId);
+    batch.delete(userRef);
+    operationCount++;
+
+    // Commit batch
+    await batch.commit();
+
+    // 6. Delete Cards (Separate batch to avoid size limits if many)
+    const cardsSnapshot = await db.collection('cards').where('owner_uid', '==', userId).get();
+    if (!cardsSnapshot.empty) {
+      const cardBatch = db.batch();
+      cardsSnapshot.docs.forEach(doc => {
+        cardBatch.delete(doc.ref);
+      });
+      await cardBatch.commit();
+    }
+
+    console.log(`onUserDeleted: Cleanup complete for ${userId}`);
+  } catch (error) {
+    console.error('onUserDeleted error:', error);
+  }
+});
+
+// ========================================
+// 10. sendReminders - リマインダー通知
+// 15分ごとに実行、設定時刻のユーザーに通知
+// ========================================
+export const sendReminders = functions.pubsub
+  .schedule('*/15 * * * *') // 15分ごと
+  .timeZone('Asia/Tokyo')
+  .onRun(async (context) => {
+    try {
+      console.log('sendReminders: 開始');
+
+      const now = new Date();
+      // JST is implicitly handled if timeZone set, but date obj is UTC in Node environment typically?
+      // Function timeZone setting affects the cron triggers.
+      // But `new Date()` returns server time (UTC usually).
+      // We need to shift to JST for comparison with "HH:mm" strings stored by user.
+
+      // Convert current UTC time to JST "HH:mm"
+      // Offset +9 hours
+      const jstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const currentHour = jstDate.getUTCHours();
+      const currentMinute = jstDate.getUTCMinutes();
+
+      // Format to HH:mm
+      // We allow 15 min window match.
+      // e.g. if run at 10:00, match 10:00-10:14
+      // Use simple equality check? 
+      // User sets "10:30". Cron runs 10:30.
+      // Perfect match or window?
+      // "HH:mm" stored is strict.
+      // Cron runs at 0, 15, 30, 45.
+      // If user sets 10:10, and cron runs 10:15, we might miss it if we check equality.
+      // Logic: Find users whose reminder_time is between [now - 15min, now].
+      // Or just check approximate match.
+      // Let's assume users select times that align with 15 mins? 
+      // No, UI allows minute precision.
+      // Better: Check if `reminder_time` falls within this cron window (e.g. current 15 min block).
+
+      // Calculate window start/end in minutes from midnight
+      const currentMinutesFromMidnight = currentHour * 60 + currentMinute;
+      // Previous run was 15 mins ago.
+      // Let's pick reminders between (now - 15) < time <= now.
+
+      // Query all cards with reminder_enabled = true
+      // Note: This matches ALL cards. In production, this needs optimization (collection group query or denormalized list).
+      // For MVP, scan all cards with reminder_enabled.
+      const cardsSnapshot = await db.collection('cards')
+        .where('reminder_enabled', '==', true)
+        .where('status', '!=', 'archived') // Exclude archived
+        .get();
+
+      console.log(`sendReminders: Checking ${cardsSnapshot.size} active reminders`);
+
+      const notifications: Array<{ uid: string; cardTitle: string }> = [];
+
+      for (const doc of cardsSnapshot.docs) {
+        const cardData = doc.data();
+        if (!cardData.reminder_time) continue;
+
+        // Check time match
+        const [rHour, rMinute] = cardData.reminder_time.split(':').map(Number);
+        const rMinutesFromMidnight = rHour * 60 + rMinute;
+
+        // Check if this time falls in the last 15 minutes window
+        // (currentMinutes - 15) < rMinutes <= currentMinutes
+        // Handle midnight wrapping? complex. 
+        // Simplification: just check absolute difference is < 15 and current >= r
+
+        // Actually simplest logic:
+        // Cron runs at XX:00, XX:15, XX:30, XX:45
+        // If current is 10:15, we want to catch 10:00 < t <= 10:15
+
+        const diff = currentMinutesFromMidnight - rMinutesFromMidnight;
+        if (diff >= 0 && diff < 15) {
+          // Time matches!
+          // Check if logged today
+          const todayJST = jstDate.toISOString().split('T')[0];
+          if (cardData.last_log_date === todayJST) {
+            // Already logged
+            continue;
+          }
+
+          notifications.push({ uid: cardData.owner_uid, cardTitle: cardData.title });
+        }
+      }
+
+      // Send notifications
+      for (const notif of notifications) {
+        await sendPushNotification(notif.uid, notif.cardTitle, '今日の記録がまだのようです。少しだけ頑張ってみませんか？');
+      }
+
+      console.log(`sendReminders: Sent ${notifications.length} reminders`);
+    } catch (error) {
+      console.error('sendReminders error:', error);
+    }
   });

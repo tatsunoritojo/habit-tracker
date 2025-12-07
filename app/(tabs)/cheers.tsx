@@ -14,9 +14,16 @@ import {
 } from 'react-native';
 import { getAuth } from 'firebase/auth';
 import { useCheerSuggestions } from '../../src/hooks/useCheerSuggestions';
+import { useUserDisplayName } from '../../src/hooks/useUserDisplayName';
 import { sendCheer, undoCheer } from '../../src/services/cheerSendService';
 
 type ActionType = 'cheer' | 'amazing' | 'support';
+
+// カード作成者表示コンポーネント（敬称略）
+const CardCreator: React.FC<{ uid: string }> = ({ uid }) => {
+  const displayName = useUserDisplayName(uid);
+  return <Text style={styles.creatorName}>by {displayName}</Text>;
+};
 
 export default function CheersScreen() {
   const { suggestions, loading, error, refresh, removeSuggestion } = useCheerSuggestions();
@@ -189,6 +196,7 @@ export default function CheersScreen() {
                     {card.category_name_ja} の仲間
                     {card.is_comeback && <Text style={styles.comebackBadge}> 再開！</Text>}
                   </Text>
+                  <CardCreator uid={card.owner_uid} />
                   <Text style={styles.cardStats}>
                     連続 {card.current_streak}日
                   </Text>
@@ -290,6 +298,12 @@ const styles = StyleSheet.create({
   cardStats: {
     fontSize: 14,
     color: '#8E8E93',
+  },
+  creatorName: {
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
+    marginBottom: 4,
   },
   actions: {
     flexDirection: 'row',

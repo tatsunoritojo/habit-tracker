@@ -1,5 +1,4 @@
-// app/(tabs)/home.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,24 +15,77 @@ import { useCards } from '../../src/hooks/useCards';
 import { useStats } from '../../src/hooks/useStats';
 import { useReactions } from '../../src/hooks/useReactions';
 import { useCheerSuggestions } from '../../src/hooks/useCheerSuggestions';
+import { useUserDisplayName } from '../../src/hooks/useUserDisplayName';
 import { recordLog } from '../../src/services/logService';
-import { auth } from '../../src/lib/firebase';
+import { auth, db } from '../../src/lib/firebase';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { WelcomeBackModal } from '../../src/components/WelcomeBackModal';
+
+// エール送信者表示コンポーネント
+const CheerSender: React.FC<{ uid: string | null }> = ({ uid }) => {
+  const displayName = useUserDisplayName(uid);
+  return <>{displayName}</>;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
   const { cards, loading, error } = useCards();
   const { stats } = useStats();
   const { reactions } = useReactions();
-  const { suggestions } = useCheerSuggestions(); // エール提案を取得
+  const { suggestions } = useCheerSuggestions();
   const [recording, setRecording] = useState(false);
-  const notificationCount = 0; // 将来実装
+  const notificationCount = 0;
+
+  // Welcome Back State
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+
+  useEffect(() => {
+    checkLastLogin();
+  }, []);
+
+  const checkLastLogin = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        const lastLogin = data.last_login_date; // string YYYY-MM-DD or null
+        const today = new Date().toISOString().split('T')[0];
+
+        if (lastLogin && lastLogin !== today) {
+          const lastDate = new Date(lastLogin);
+          const currDate = new Date(today);
+          const diffTime = Math.abs(currDate.getTime() - lastDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays >= 3) {
+            setShowWelcomeBack(true);
+          }
+        }
+
+        // Update last login
+        if (lastLogin !== today) {
+          await updateDoc(userRef, {
+            last_login_date: today,
+            updated_at: Timestamp.now()
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Check login error:', e);
+    }
+  };
 
   // 今日の日付（YYYY-MM-DD形式）
   const today = new Date().toISOString().split('T')[0];
 
   // カードごとの最新エールを取得
   const latestCheersByCard = useMemo(() => {
-    const cheerMap: Record<string, { icons: string; from: string }> = {};
+    const cheerMap: Record<string, { icons: string; from: string; fromUid: string | null }> = {};
 
     cards.forEach((card) => {
       const cardCheers = reactions
@@ -49,7 +101,12 @@ export default function HomeScreen() {
         const icons = cardCheers
           .map((c) => (c.type === 'amazing' ? '⭐' : c.type === 'cheer' ? '💪' : '🤝'))
           .join('');
-        cheerMap[card.card_id] = { icons, from: 'ハビット仲間' };
+        const latestCheer = cardCheers[0];
+        cheerMap[card.card_id] = {
+          icons,
+          from: 'ハビット仲間',
+          fromUid: latestCheer.from_uid || null
+        };
       }
     });
 
@@ -70,6 +127,10 @@ export default function HomeScreen() {
           {
             text: 'キャンセル',
             style: 'cancel',
+          },
+          {
+            text: '統計のみ確認',
+            onPress: () => router.push(`/card-detail/${card.card_id}`),
           },
           {
             text: '記録する',
@@ -109,6 +170,7 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={styles.card}
         onPress={() => handleCardPress(item)}
+        onLongPress={() => router.push(`/card-detail/${item.card_id}`)}
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
@@ -123,7 +185,7 @@ export default function HomeScreen() {
         {cheer && (
           <View style={styles.cardCheer}>
             <Text style={styles.cardCheerText}>
-              エール: {cheer.icons}  from {cheer.from}
+              エール: {cheer.icons}  from <CheerSender uid={cheer.fromUid} />
             </Text>
           </View>
         )}
@@ -186,10 +248,10 @@ export default function HomeScreen() {
 
       {/* ヘッダー */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => console.log('menu pressed')}>
+        <TouchableOpacity onPress={() => router.push('/settings')}>
           <Text style={styles.menuIcon}>≡</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => console.log('notification pressed')}>
+        <TouchableOpacity onPress={() => router.push('/notifications')}>
           <View style={styles.notificationContainer}>
             <Text style={styles.notificationIcon}>🔔</Text>
             {notificationCount > 0 && (
@@ -228,14 +290,18 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {/* カードリスト */}
+      {/* カードリスト - アーカイブ以外を表示 */}
       <FlatList
-        data={cards}
+        data={cards.filter(c => c.status !== 'archived')}
         renderItem={renderCard}
         keyExtractor={(item) => item.card_id}
         contentContainerStyle={styles.cardList}
         ListFooterComponent={renderAddCardButton}
         ListEmptyComponent={renderEmptyState}
+      />
+      <WelcomeBackModal
+        visible={showWelcomeBack}
+        onClose={() => setShowWelcomeBack(false)}
       />
     </SafeAreaView>
   );

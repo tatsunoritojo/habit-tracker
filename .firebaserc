@@ -1,6 +1,6 @@
 {
   "projects": {
-    "npx firebase deploy --only firestore:indexes": "habit-tracker-app-5c0fa"
+    "default": "habit-tracker-app-5c0fa"
   },
   "targets": {},
   "etags": {}

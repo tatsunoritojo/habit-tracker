@@ -1,14 +1,20 @@
 // app/(tabs)/settings.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, ScrollView, Switch, TouchableOpacity, Linking, Alert, Modal, Platform } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, ScrollView, Switch, TouchableOpacity, Linking, Alert, Modal, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSettings } from '../../src/hooks/useSettings';
+import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { auth } from '../../src/lib/firebase';
 import Constants from 'expo-constants';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { settings, loading, updateSettings } = useSettings();
+  const { displayName, loading: loadingProfile, updateDisplayName } = useUserProfile();
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
   const [showBatchTimePicker, setShowBatchTimePicker] = useState(false);
   const [showQuietStartPicker, setShowQuietStartPicker] = useState(false);
   const [showQuietEndPicker, setShowQuietEndPicker] = useState(false);
@@ -139,6 +145,30 @@ export default function SettingsScreen() {
     Linking.openURL(url).catch(() => {
       Alert.alert('エラー', 'リンクを開けませんでした');
     });
+  };
+
+  const handleNicknameEdit = () => {
+    setNicknameInput(displayName || '');
+    setShowNicknameModal(true);
+  };
+
+  const handleNicknameSave = async () => {
+    if (nicknameInput.trim().length < 1) {
+      Alert.alert('エラー', 'ニックネームは1文字以上入力してください');
+      return;
+    }
+    if (nicknameInput.length > 20) {
+      Alert.alert('エラー', 'ニックネームは20文字以内で入力してください');
+      return;
+    }
+
+    const success = await updateDisplayName(nicknameInput.trim());
+    if (success) {
+      setShowNicknameModal(false);
+      Alert.alert('成功', 'ニックネームを更新しました');
+    } else {
+      Alert.alert('エラー', '更新に失敗しました');
+    }
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
@@ -317,6 +347,36 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* データ管理セクション */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>データ管理</Text>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/archived-cards')}
+          >
+            <Text style={styles.rowTitle}>アーカイブした習慣</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* プロフィールセクション */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>プロフィール</Text>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={handleNicknameEdit}
+            disabled={loadingProfile}
+          >
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>ニックネーム</Text>
+              <Text style={styles.rowSubtitle}>
+                {displayName || '未設定'}
+              </Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* アカウントセクション */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アカウント</Text>
@@ -326,6 +386,13 @@ export default function SettingsScreen() {
               <Text style={styles.rowSubtitle}>{auth.currentUser?.uid || '未認証'}</Text>
             </View>
           </View>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/settings/account-deletion')}
+          >
+            <Text style={[styles.rowTitle, { color: '#FF3B30' }]}>アカウント削除</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* アプリについてセクション */}
@@ -471,7 +538,53 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </Modal>
       )}
-    </SafeAreaView>
+
+      {/* Nickname Edit Modal */}
+      <Modal
+        visible={showNicknameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNicknameModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowNicknameModal(false)}
+        >
+          <View
+            style={styles.nicknameModalContent}
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={styles.nicknameModalTitle}>ニックネームを編集</Text>
+            <TextInput
+              style={styles.nicknameInput}
+              value={nicknameInput}
+              onChangeText={setNicknameInput}
+              placeholder="ニックネームを1〜20文字で入力"
+              maxLength={20}
+              autoFocus
+            />
+            <Text style={styles.nicknameCharCount}>
+              {nicknameInput.length}/20文字
+            </Text>
+            <View style={styles.nicknameModalButtons}>
+              <TouchableOpacity
+                style={[styles.nicknameModalButton, styles.nicknameModalButtonCancel]}
+                onPress={() => setShowNicknameModal(false)}
+              >
+                <Text style={styles.nicknameModalButtonTextCancel}>キャンセル</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.nicknameModalButton, styles.nicknameModalButtonSave]}
+                onPress={handleNicknameSave}
+              >
+                <Text style={styles.nicknameModalButtonTextSave}>保存</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </SafeAreaView >
   );
 }
 
@@ -717,5 +830,60 @@ const styles = StyleSheet.create({
   },
   picker: {
     backgroundColor: '#FFFFFF',
+  },
+  nicknameModalContent: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 32,
+    borderRadius: 16,
+    padding: 24,
+  },
+  nicknameModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  nicknameInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#000000',
+  },
+  nicknameCharCount: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 8,
+    textAlign: 'right',
+  },
+  nicknameModalButtons: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 12,
+  },
+  nicknameModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  nicknameModalButtonCancel: {
+    backgroundColor: '#F2F2F7',
+  },
+  nicknameModalButtonSave: {
+    backgroundColor: '#4A90E2',
+  },
+  nicknameModalButtonTextCancel: {
+    fontSize: 16,
+    color: '#000000',
+    fontWeight: '600',
+  },
+  nicknameModalButtonTextSave: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

@@ -5,10 +5,10 @@
 | 項目 | 内容 |
 |------|------|
 | ドキュメント種別 | MVP仕様書 |
-| バージョン | 1.0 |
+| バージョン | 1.1 |
 | 作成日 | 2025年11月26日 |
-| 最終更新 | 2025年12月7日 |
-| 作成者 | プロジェクトマネージャー |
+| 最終更新 | 2025年12月8日 |
+| 作成者 | Claude Code |
 
 ---
 
@@ -81,6 +81,7 @@
 users/{uid}
 {
   uid: string;                      // Firebase Auth UID
+  display_name?: string;            // Phase 9.5: ニックネーム
   created_at: Timestamp;
   last_login_at: Timestamp;
   
@@ -128,7 +129,11 @@ cards/{cardId}
   is_custom: boolean;               // オリジナルカード判定
   
   // 公開設定
-  is_public: boolean;
+  is_public: boolean;               // Phase 9.5: deprecated
+  
+  // Phase 9.5: 公開設定の細分化
+  is_public_for_cheers?: boolean;   // エールを受け取る
+  is_public_for_template?: boolean; // テンプレートとして公開
   
   // 統計（非正規化）
   current_streak: number;

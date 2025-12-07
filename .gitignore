@@ -49,3 +49,5 @@ nul
 
 # screenshots (development only)
 screenshots/
+
+serviceAccountKey.json
