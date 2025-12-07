@@ -36,6 +36,8 @@ describe('cheerSendService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (writeBatch as jest.Mock).mockReturnValue(mockBatch);
+        // doc() が id プロパティを持つオブジェクトを返すようにモック
+        (doc as jest.Mock).mockReturnValue({ id: 'mock-reaction-id' });
     });
 
     describe('getCheerSuggestions', () => {
