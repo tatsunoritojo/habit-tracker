@@ -1,5 +1,5 @@
 // app/(tabs)/notifications.tsx
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -12,51 +12,9 @@ import {
 } from 'react-native';
 import { useReactions, markReactionAsRead } from '../../src/hooks/useReactions';
 import { REACTIONS } from '../../src/types';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../src/lib/firebase';
 
 export default function NotificationsScreen() {
   const { reactions, loading } = useReactions();
-  const [cardDetails, setCardDetails] = useState<Record<string, { title: string; categoryName?: string }>>({});
-
-  // カード情報（タイトル、カテゴリ）を取得
-  useEffect(() => {
-    const fetchCardDetails = async () => {
-      const details: Record<string, { title: string; categoryName?: string }> = {};
-
-      for (const reaction of reactions) {
-        if (!details[reaction.to_card_id]) {
-          try {
-            const cardSnap = await getDoc(doc(db, 'cards', reaction.to_card_id));
-            if (cardSnap.exists()) {
-              const cardData = cardSnap.data();
-              let categoryName = '習慣';
-
-              // 人間エールの場合はカテゴリ名も取得
-              if (reaction.from_uid !== 'system' && cardData.category_l3) {
-                const catSnap = await getDoc(doc(db, 'categories', cardData.category_l3));
-                if (catSnap.exists()) {
-                  categoryName = catSnap.data().name_ja;
-                }
-              }
-
-              details[reaction.to_card_id] = {
-                title: cardData.title,
-                categoryName
-              };
-            }
-          } catch (error) {
-            console.error('カード情報取得エラー:', error);
-          }
-        }
-      }
-      setCardDetails(details);
-    };
-
-    if (reactions.length > 0) {
-      fetchCardDetails();
-    }
-  }, [reactions]);
 
   // エールをタップして既読にする
   const handleReactionPress = async (reactionId: string, isRead: boolean) => {
@@ -102,11 +60,10 @@ export default function NotificationsScreen() {
         keyExtractor={(item) => item.reaction_id}
         renderItem={({ item }) => {
           const reactionInfo = REACTIONS[item.type];
-          const details = cardDetails[item.to_card_id];
-          const cardTitle = details?.title || '習慣カード';
+          const cardTitle = item.card_title || '習慣カード';
           const senderName = item.from_uid === 'system'
             ? 'ハビット仲間'
-            : `${details?.categoryName || '習慣'}の仲間`;
+            : `${item.card_category_name || '習慣'}の仲間`;
 
           return (
             <TouchableOpacity

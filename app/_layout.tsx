@@ -12,13 +12,13 @@ export default function RootLayout() {
   useEffect(() => {
     const run = async () => {
       try {
-        console.log('RootLayout: init start');
+        // console.log('RootLayout: init start');
         await ensureAnonymousLoginAndUser();
 
         // Phase 7: プッシュ通知の初期化
         await initializeNotifications();
 
-        console.log('RootLayout: init done');
+        // console.log('RootLayout: init done');
       } catch (e) {
         console.error('Firebase init error', e);
         setError(e instanceof Error ? e.message : 'Firebase初期化に失敗しました');

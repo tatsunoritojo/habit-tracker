@@ -10,7 +10,10 @@ service cloud.firestore {
     // cards: 本人は全操作、他者は公開のみ読み取り
     match /cards/{cardId} {
       allow read: if request.auth != null &&
-        (resource.data.owner_uid == request.auth.uid || resource.data.is_public == true);
+        (resource.data.owner_uid == request.auth.uid || 
+         resource.data.is_public == true ||
+         resource.data.is_public_for_cheers == true ||
+         resource.data.is_public_for_template == true);
       allow create: if request.auth != null && request.resource.data.owner_uid == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.owner_uid == request.auth.uid;
     }
@@ -22,9 +25,9 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.owner_uid == request.auth.uid;
     }
 
-    // categories, card_templates: 全員読み取り
+    // categories: 一時的にdelete許可（メンテナンス用）
     match /categories/{doc} {
-      allow read: if request.auth != null;
+      allow read, delete: if true;
     }
     match /card_templates/{doc} {
       allow read: if request.auth != null;
@@ -47,14 +50,13 @@ service cloud.firestore {
 
     // cheer_state: Cloud Functions のみ（管理者権限で操作）
     match /cheer_state/{docId} {
-      allow read: if request.auth != null && resource.data.user_uid == request.auth.uid;
+      allow read: if request.auth != null && docId == request.auth.uid;
       allow write: if false; // Cloud Functions のみが書き込み可能
     }
 
     // cheer_send_state: 本人のみ読み書き（Phase 8）
     match /cheer_send_state/{docId} {
-      allow read, write: if request.auth != null && resource.data.user_uid == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.user_uid == request.auth.uid;
+      allow read, write: if request.auth != null && docId == request.auth.uid;
     }
   }
 }

@@ -8,6 +8,7 @@ import { Timestamp } from 'firebase/firestore';
 // ========================================
 export type User = {
   uid: string;
+  display_name: string | null; // ニックネーム（1〜20文字、null=未設定）
   created_at: Timestamp;
   last_login_at: Timestamp;
   settings: UserSettings;
@@ -56,13 +57,21 @@ export type Card = {
   is_custom: boolean; // MVP: 常にfalse
 
   // 公開設定
-  is_public: boolean;
+  is_public: boolean; // 後方互換性のため残す（deprecated）
+  is_public_for_cheers: boolean; // エールを受け取る（他の人が送信可能）
+  is_public_for_template: boolean; // テンプレートとして公開（他の人が選択可能）
 
   // 統計（非正規化）
   current_streak: number;
   longest_streak: number;
   total_logs: number;
   last_log_date: string; // "YYYY-MM-DD"
+
+  // Phase 9: ステータス管理と通知
+  status: 'active' | 'archived';
+  archived_at?: Timestamp | null;
+  reminder_enabled?: boolean;
+  reminder_time?: string | null; // "HH:mm"
 
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -152,6 +161,10 @@ export type Reaction = {
   message?: string; // エール文言（システムエールのみ）
   scheduled_for?: Timestamp | null; // まとめて通知用の配信予定時刻
   delivered?: boolean; // 配信済みフラグ
+
+  // Phase 9: カード情報の非正規化（通知画面用）
+  card_title?: string; // カードタイトル
+  card_category_name?: string; // カテゴリ名（日本語）
 
   created_at: Timestamp;
   is_read: boolean;

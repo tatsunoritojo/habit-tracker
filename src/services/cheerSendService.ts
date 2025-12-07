@@ -43,7 +43,7 @@ export async function getCheerSuggestions(userId: string): Promise<CheerSuggesti
         const q = query(
             cardsRef,
             where('owner_uid', '==', userId),
-            where('is_public', '==', true)
+            where('is_public_for_cheers', '==', true)
         );
         const querySnapshot = await getDocs(q);
 
@@ -148,7 +148,27 @@ export async function sendCheer(
         throw new Error('ALREADY_SENT_TODAY');
     }
 
-    // 2. Reaction作成
+    // 2. カード情報を取得（非正規化用）
+    const cardRef = doc(db, 'cards', toCardId);
+    const cardSnap = await getDoc(cardRef);
+    let cardTitle = '習慣カード';
+    let cardCategoryName = '習慣';
+
+    if (cardSnap.exists()) {
+        const cardData = cardSnap.data() as Card;
+        cardTitle = cardData.title;
+
+        // カテゴリ名を取得
+        if (cardData.category_l3) {
+            const catRef = doc(db, 'categories', cardData.category_l3);
+            const catSnap = await getDoc(catRef);
+            if (catSnap.exists()) {
+                cardCategoryName = catSnap.data().name_ja || '習慣';
+            }
+        }
+    }
+
+    // 3. Reaction作成
     const reactionRef = doc(collection(db, 'reactions'));
     const reactionId = reactionRef.id;
 
@@ -160,6 +180,8 @@ export async function sendCheer(
         type: type,
         reason: 'manual',
         message: null,
+        card_title: cardTitle,
+        card_category_name: cardCategoryName,
         created_at: serverTimestamp(),
         scheduled_for: null,
         delivered: false,

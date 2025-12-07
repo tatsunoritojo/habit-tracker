@@ -48,7 +48,8 @@ export function useCardLogs(cardId: string) {
             log_id: doc.id,
             ...doc.data(),
           } as Log))
-          .sort((a, b) => b.logged_date.localeCompare(a.logged_date)); // 降順ソート
+          .filter((log) => log.date)
+          .sort((a, b) => b.date.localeCompare(a.date)); // 降順ソート
 
         setLogs(logsList);
         setLoading(false);

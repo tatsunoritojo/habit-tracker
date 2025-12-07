@@ -32,9 +32,10 @@
 
 各開発フェーズの記録と進捗を追うためのドキュメントです。
 
-*   `Phase_07/`、`Phase_08/`、`Phase_09/`: 各フェーズの開発指示書と完了報告書。
+*   `Phase_07/`、`Phase_08/`、`Phase_09/`、`Phase_9.5/`: 各フェーズの開発指示書と完了報告書。
     *   例: `Phase_07/request_developer_phase7_v1.1.md` (指示書)
     *   例: `Phase_07/phase7_completion_report.md` (完了報告書)
+    *   **Phase 9.5**: ニックネーム機能、カード重複防止、公開設定細分化
 *   `Development_Reports/`: 各日・期間ごとの全体的な開発報告書。
     *   例: `Development_Reports/development_report_251127.md`
 
@@ -43,6 +44,7 @@
 コードベースの現状分析、品質保証、テストに関するドキュメントです。
 
 *   `implementation_status_report.md`: AIエージェントがコードベースをリバースエンジニアリングして作成した、アプリの実装現状詳細レポート。
+*   `database_structure_guide.md`: **Phase 9.5追加** - Firestoreデータベース構造、カテゴリ階層、テンプレート表示ロジック、セキュリティルールの詳細ガイド。
 *   `analysis_reports/`: コードの行数統計、開発リズム分析、スクリプトの役割定義など。
 *   `dev_logs/`: テスト環境の構築、CI/CD導入の経緯、テスト実施ログなど。
 *   `regression_checklist.md`: フェーズ完了時に実行される回帰テストのチェックリスト。
