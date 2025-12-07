@@ -39,7 +39,7 @@ git checkout -b feature/phase-N-description
 ### 3. 作業完了時
 
 #### 3-1. README更新
-`docs/README.md` の以下を更新：
+`5_Project_Guides/README.md` の以下を更新：
 - [ ] 実装済み機能リストに追加
 - [ ] プロジェクト構造（新規ファイル追加時）
 - [ ] よく使うコマンド（新規スクリプト追加時）
@@ -78,9 +78,9 @@ git push origin main
 
 #### 1. 開発報告書の作成
 
-**ファイル名**: `docs/development_report_YYMMDD.md`
+**ファイル名**: `2_Development_Lifecycle/Development_Reports/development_report_YYMMDD.md`
 
-**テンプレート**: `docs/templates/report_template.md` を使用
+**テンプレート**: `5_Project_Guides/templates/report_template.md` を使用
 
 **必須項目**:
 ```markdown
@@ -115,11 +115,10 @@ git push origin main
 
 ```
 docs/
-├── README.md                        # プロジェクト全体のドキュメント
-├── workflow_guide.md                # このファイル（ワークフロー）
-├── development_report_YYMMDD.md     # 開発報告書（日付付き）
-└── templates/                       # テンプレート集
-    └── report_template.md           # 報告書テンプレート
+├── 5_Project_Guides/README.md       # プロジェクト全体のドキュメント
+├── 5_Project_Guides/workflow_guide.md # このファイル（ワークフロー）
+├── 2_Development_Lifecycle/Development_Reports/development_report_YYMMDD.md # 開発報告書（日付付き）
+└── 5_Project_Guides/templates/report_template.md # 報告書テンプレート
 ```
 
 #### 3. 報告の提出
@@ -134,14 +133,42 @@ docs/
 
 ```
 docs/
-├── README.md                        # プロジェクト全体のドキュメント（常に最新化）
-├── workflow_guide.md                # 開発ワークフローガイド（このファイル）
-├── mvp_specification.md             # MVP仕様書（参照用）
-├── project_proposal.md              # プロジェクト提案書（参照用）
-├── screen_design.md                 # 画面設計書（参照用）
-├── development_report_251127.md     # 開発報告書（日付付き、履歴保存）
-└── templates/                       # テンプレート集
-    └── report_template.md
+├── 1_Strategy_and_Design/       # 企画・設計
+│   ├── project_proposal.md
+│   ├── mvp_specification.md
+│   ├── design_intent_document.md
+│   └── screen_design.md
+│
+├── 2_Development_Lifecycle/     # 開発記録
+│   ├── Phase_07/
+│   │   ├── request_developer_phase7_v1.1.md
+│   │   └── phase7_completion_report.md
+│   ├── Phase_08/
+│   │   ├── request_developer_phase8.md
+│   │   └── phase8_completion_report.md
+│   ├── Phase_09/
+│   │   ├── request_developer_phase9.md
+│   │   └── phase9_completion_report.md
+│   └── Development_Reports/  # 全体報告
+│       ├── development_report_251127.md
+│       └── development_report_251128.md
+│
+├── 3_Analysis_and_Quality/      # 分析と品質
+│   ├── implementation_status_report.md
+│   ├── analysis_reports/
+│   ├── dev_logs/
+│   └── regression_checklist.md
+│
+├── 4_Generated_Content/          # AI関連コンテンツ
+│   ├── prompt_for_engineer.md
+│   ├── prompt_additional_investigation.md
+│   └── reverse_engineering_instructions.md
+│
+└── 5_Project_Guides/             # プロジェクト運用
+    ├── README.md
+    ├── INDEX.md
+    ├── workflow_guide.md
+    └── templates/
 ```
 
 ---
@@ -157,8 +184,8 @@ docs/
 - [ ] .envファイルがコミットされていないことを確認
 
 ### ドキュメント
-- [ ] `docs/README.md` 更新
-- [ ] 開発報告書作成（`development_report_YYMMDD.md`）
+- [ ] `5_Project_Guides/README.md` 更新
+- [ ] 開発報告書作成（`2_Development_Lifecycle/Development_Reports/development_report_YYMMDD.md`）
 - [ ] スクリーンショット整理
 
 ### Git
