@@ -31,13 +31,6 @@ export const onLogCreated = functions.firestore
     try {
       console.log(`onLogCreated: card_id=${card_id}, owner_uid=${owner_uid}`);
 
-      // 1日の上限チェック
-      const canSend = await checkDailyLimit(owner_uid);
-      if (!canSend) {
-        console.log('onLogCreated: 1日の上限に達しているためスキップ');
-        return;
-      }
-
       // カード情報を取得
       const cardSnap = await db.collection('cards').doc(card_id).get();
       if (!cardSnap.exists) {
@@ -47,6 +40,20 @@ export const onLogCreated = functions.firestore
 
       const cardData = cardSnap.data();
       if (!cardData) return;
+
+      // ===== マッチングプール即時更新 =====
+      // is_public または is_public_for_cheers が true の場合に更新
+      if (cardData.is_public || cardData.is_public_for_cheers) {
+        await updateMatchingPoolForCard(card_id, cardData);
+      }
+
+      // ===== AIエールスケジュール =====
+      // 1日の上限チェック
+      const canSend = await checkDailyLimit(owner_uid);
+      if (!canSend) {
+        console.log('onLogCreated: 1日の上限に達しているためスキップ');
+        return;
+      }
 
       // 5〜45分後のランダムな時刻を計算
       const delayMinutes = Math.floor(Math.random() * 41) + 5; // 5〜45分
@@ -82,6 +89,73 @@ export const onLogCreated = functions.firestore
       console.error('onLogCreated error:', error);
     }
   });
+
+/**
+ * カードの情報をマッチングプールに即時反映
+ */
+async function updateMatchingPoolForCard(cardId: string, cardData: any): Promise<void> {
+  try {
+    const categoryL3 = cardData.category_l3;
+    if (!categoryL3) {
+      console.log('updateMatchingPoolForCard: カテゴリなし');
+      return;
+    }
+
+    // カテゴリ名を取得
+    let categoryNameJa = '習慣';
+    const categorySnap = await db.collection('categories').doc(categoryL3).get();
+    if (categorySnap.exists) {
+      categoryNameJa = categorySnap.data()?.name_ja || '習慣';
+    }
+
+    const poolRef = db.collection('matching_pools').doc(categoryL3);
+
+    await db.runTransaction(async (t) => {
+      const poolDoc = await t.get(poolRef);
+
+      const today = new Date().toISOString().split('T')[0];
+      const newCardEntry = {
+        card_id: cardId,
+        owner_uid: cardData.owner_uid,
+        title: cardData.title || '習慣',
+        current_streak: (cardData.current_streak || 0) + 1, // ログ作成時なので+1
+        last_log_date: today,
+        total_logs: (cardData.total_logs || 0) + 1,
+        is_comeback: false, // 簡易判定（今記録したので再開ではない）
+      };
+
+      if (!poolDoc.exists) {
+        // プールが存在しない場合は新規作成
+        t.set(poolRef, {
+          category_l3: categoryL3,
+          category_l3_name_ja: categoryNameJa,
+          active_cards: [newCardEntry],
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        // 既存プールを更新
+        const data = poolDoc.data();
+        const activeCards = data?.active_cards || [];
+
+        // 既存のカードエントリを削除して新しいものを追加
+        const filteredCards = activeCards.filter((c: any) => c.card_id !== cardId);
+        filteredCards.unshift(newCardEntry); // 先頭に追加（最新）
+
+        // 最大100件に制限
+        const limitedCards = filteredCards.slice(0, 100);
+
+        t.update(poolRef, {
+          active_cards: limitedCards,
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    });
+
+    console.log(`updateMatchingPoolForCard: ${categoryL3} に ${cardId} を追加/更新`);
+  } catch (error) {
+    console.error('updateMatchingPoolForCard error:', error);
+  }
+}
 
 // ========================================
 // 2. sendDelayedCheer - スケジュール済みエールの送信

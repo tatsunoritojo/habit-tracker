@@ -32,14 +32,26 @@ export async function updateMatchingPoolsLogic() {
             const categoryNameJa = categoryData.name_ja || '習慣';
 
             // 2. 該当カテゴリの公開カードを取得
-            // is_public: true のカードを取得
-            const cardsSnapshot = await db
+            // is_public: true または is_public_for_cheers: true のカードを取得
+            // Firestore doesn't support OR queries, so we fetch both separately
+            const publicCardsSnapshot = await db
                 .collection('cards')
                 .where('category_l3', '==', categoryId)
                 .where('is_public', '==', true)
                 .get();
 
-            if (cardsSnapshot.empty) {
+            const cheersPublicCardsSnapshot = await db
+                .collection('cards')
+                .where('category_l3', '==', categoryId)
+                .where('is_public_for_cheers', '==', true)
+                .get();
+
+            // Merge and deduplicate
+            const cardMap = new Map<string, admin.firestore.DocumentSnapshot>();
+            publicCardsSnapshot.docs.forEach(doc => cardMap.set(doc.id, doc));
+            cheersPublicCardsSnapshot.docs.forEach(doc => cardMap.set(doc.id, doc));
+
+            if (cardMap.size === 0) {
                 continue; // 公開カードがないカテゴリはスキップ
             }
 
@@ -50,10 +62,9 @@ export async function updateMatchingPoolsLogic() {
 
             const activeCards: MatchingCard[] = [];
 
-            for (const cardDoc of cardsSnapshot.docs) {
+            for (const cardDoc of cardMap.values()) {
                 const card = cardDoc.data();
-
-                // last_log_dateがない、または古い場合はスキップ
+                if (!card) continue;
                 if (!card.last_log_date || card.last_log_date < sevenDaysAgoStr) {
                     continue;
                 }
