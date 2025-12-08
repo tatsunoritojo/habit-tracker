@@ -1,5 +1,5 @@
 // app/(tabs)/cheers.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,18 +15,21 @@ import {
 import { getAuth } from 'firebase/auth';
 import { useCheerSuggestions } from '../../src/hooks/useCheerSuggestions';
 import { useUserDisplayName } from '../../src/hooks/useUserDisplayName';
+import { useFavorites } from '../../src/hooks/useFavorites';
 import { sendCheer, undoCheer } from '../../src/services/cheerSendService';
+import { FavoriteButton } from '../../src/components/FavoriteButton';
 
 type ActionType = 'cheer' | 'amazing' | 'support';
 
 // カード作成者表示コンポーネント（敬称略）
 const CardCreator: React.FC<{ uid: string }> = ({ uid }) => {
   const displayName = useUserDisplayName(uid);
-  return <Text style={styles.creatorName}>by {displayName}</Text>;
+  return <Text style={styles.creatorName}>{displayName}</Text>;
 };
 
 export default function CheersScreen() {
   const { suggestions, loading, error, refresh, removeSuggestion } = useCheerSuggestions();
+  const { isFavorite, addFavorite, removeFavorite, favoriteCount } = useFavorites();
   const [undoState, setUndoState] = useState<{
     visible: boolean;
     reactionId: string;
@@ -34,6 +37,45 @@ export default function CheersScreen() {
     message: string;
   } | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // セクション分け: お気に入り vs その他
+  const { favoriteSuggestions, otherSuggestions } = useMemo(() => {
+    const favorites = suggestions.filter((s) => isFavorite(s.card_id));
+    const others = suggestions.filter((s) => !isFavorite(s.card_id));
+    return { favoriteSuggestions: favorites, otherSuggestions: others };
+  }, [suggestions, isFavorite]);
+
+  // お気に入り切り替え
+  const handleToggleFavorite = async (
+    cardId: string,
+    ownerUid: string,
+    categoryL3: string
+  ) => {
+    if (isFavorite(cardId)) {
+      const result = await removeFavorite(cardId);
+      if (result.success) {
+        showToast('お気に入りから解除しました');
+      }
+    } else {
+      if (favoriteCount >= 10) {
+        showToast('お気に入りは10人までです');
+        return;
+      }
+      const result = await addFavorite(ownerUid, cardId, categoryL3);
+      if (result.success) {
+        showToast('お気に入りに追加しました');
+      } else if (result.error === 'LIMIT_REACHED') {
+        showToast('お気に入りは10人までです');
+      }
+    }
+  };
+
+  // トースト表示
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 2000);
+  };
 
   // アンドゥスナックバーの表示制御
   useEffect(() => {
@@ -93,6 +135,7 @@ export default function CheersScreen() {
       });
 
     } catch (e: any) {
+      console.error('sendCheer error:', e);
       if (e.message === 'DAILY_LIMIT_REACHED') {
         Alert.alert('制限', '1日の送信上限（10件）に達しました');
       } else if (e.message === 'ALREADY_SENT_TODAY') {
@@ -188,28 +231,73 @@ export default function CheersScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          suggestions.map((card) => (
-            <View key={card.card_id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View>
-                  <Text style={styles.categoryName}>
-                    {card.category_name_ja} の仲間
-                    {card.is_comeback && <Text style={styles.comebackBadge}> 再開！</Text>}
-                  </Text>
-                  <CardCreator uid={card.owner_uid} />
-                  <Text style={styles.cardStats}>
-                    連続 {card.current_streak}日
-                  </Text>
-                </View>
-              </View>
+          <>
+            {/* お気に入りの仲間セクション */}
+            {favoriteSuggestions.length > 0 && (
+              <>
+                <Text style={styles.sectionHeader}>★ お気に入りの仲間</Text>
+                {favoriteSuggestions.map((card) => (
+                  <View key={card.card_id} style={[styles.card, styles.favoriteCard]}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardTitleRow}>
+                        <Text style={styles.categoryName}>
+                          ★ {card.category_name_ja} の仲間
+                          {card.is_comeback && <Text style={styles.comebackBadge}> 再開！</Text>}
+                        </Text>
+                        <FavoriteButton
+                          isFavorite={true}
+                          onToggle={() => handleToggleFavorite(card.card_id, card.owner_uid, card.category_l3)}
+                        />
+                      </View>
+                      <CardCreator uid={card.owner_uid} />
+                      <Text style={styles.cardStats}>
+                        連続 {card.current_streak}日
+                      </Text>
+                    </View>
+                    <View style={styles.actions}>
+                      <ActionButton type="cheer" onPress={() => handleSendCheer(card.card_id, 'cheer', card.owner_uid)} />
+                      <ActionButton type="amazing" onPress={() => handleSendCheer(card.card_id, 'amazing', card.owner_uid)} />
+                      <ActionButton type="support" onPress={() => handleSendCheer(card.card_id, 'support', card.owner_uid)} />
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
 
-              <View style={styles.actions}>
-                <ActionButton type="cheer" onPress={() => handleSendCheer(card.card_id, 'cheer', card.owner_uid)} />
-                <ActionButton type="amazing" onPress={() => handleSendCheer(card.card_id, 'amazing', card.owner_uid)} />
-                <ActionButton type="support" onPress={() => handleSendCheer(card.card_id, 'support', card.owner_uid)} />
-              </View>
-            </View>
-          ))
+            {/* その他の仲間セクション */}
+            {otherSuggestions.length > 0 && (
+              <>
+                {favoriteSuggestions.length > 0 && (
+                  <Text style={styles.sectionHeader}>その他の仲間</Text>
+                )}
+                {otherSuggestions.map((card) => (
+                  <View key={card.card_id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardTitleRow}>
+                        <Text style={styles.categoryName}>
+                          {card.category_name_ja} の仲間
+                          {card.is_comeback && <Text style={styles.comebackBadge}> 再開！</Text>}
+                        </Text>
+                        <FavoriteButton
+                          isFavorite={false}
+                          onToggle={() => handleToggleFavorite(card.card_id, card.owner_uid, card.category_l3)}
+                        />
+                      </View>
+                      <CardCreator uid={card.owner_uid} />
+                      <Text style={styles.cardStats}>
+                        連続 {card.current_streak}日
+                      </Text>
+                    </View>
+                    <View style={styles.actions}>
+                      <ActionButton type="cheer" onPress={() => handleSendCheer(card.card_id, 'cheer', card.owner_uid)} />
+                      <ActionButton type="amazing" onPress={() => handleSendCheer(card.card_id, 'amazing', card.owner_uid)} />
+                      <ActionButton type="support" onPress={() => handleSendCheer(card.card_id, 'support', card.owner_uid)} />
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+          </>
         )}
 
         {suggestions.length > 0 && (
@@ -228,6 +316,13 @@ export default function CheersScreen() {
             <Text style={styles.undoText}>取り消す</Text>
           </TouchableOpacity>
         </Animated.View>
+      )}
+
+      {/* トースト */}
+      {toastMessage && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -395,5 +490,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 16,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#666666',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  favoriteCard: {
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  toast: {
+    position: 'absolute',
+    bottom: 100,
+    left: 32,
+    right: 32,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

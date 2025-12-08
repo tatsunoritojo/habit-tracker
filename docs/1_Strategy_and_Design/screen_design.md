@@ -30,6 +30,7 @@
 | S08-2 | アカウント削除 | app/settings/account-deletion.tsx | 退会機能 |
 | S09 | 今日のエール | app/today-cheers.tsx | まとめて通知タップ時の遷移先 |
 | S10 | アーカイブ一覧 | app/archived-cards.tsx | アーカイブしたカードの管理 |
+| S11 | お気に入り一覧 | app/favorites.tsx | お気に入りの仲間の管理（Phase 10-A） |
 
 ---
 
