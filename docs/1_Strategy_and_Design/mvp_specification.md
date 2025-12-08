@@ -74,6 +74,7 @@
 | reactions | リアクション（エール） | Phase 7で拡張 |
 | cheer_state | AIエール状態管理 | Phase 7 |
 | cheer_send_state | 人間エール送信制限 | Phase 8 |
+| favorites | お気に入り | Phase 10-A |
 
 ### 3.2 users
 
@@ -419,6 +420,7 @@ mindfulness（マインドフルネス）
 | S08-2 | アカウント削除 | app/settings/account-deletion.tsx | 退会機能 |
 | S09 | 今日のエール | app/today-cheers.tsx | まとめて通知タップ時の遷移先 |
 | S10 | アーカイブ一覧 | app/archived-cards.tsx | アーカイブしたカードの管理 |
+| S11 | お気に入り一覧 | app/favorites.tsx | お気に入りの仲間の管理（Phase 10-A） |
 
 ### 6.2 カレンダー・統計表示設計
 
@@ -705,64 +707,128 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // users: 本人のみ
+    // ========================================
+    // users: ユーザー情報
+    // ========================================
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      // 読み取り: 認証済み全員（display_name取得のため）
+      // TODO: 本番前に public_profiles サブコレクション化を検討
+      allow read: if request.auth != null;
+      
+      // 書き込み: 本人のみ
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // cards: 本人は全操作、他者は公開のみ読み取り
+    // ========================================
+    // cards: 習慣カード
+    // ========================================
     match /cards/{cardId} {
-      allow read: if request.auth != null &&
-        (resource.data.owner_uid == request.auth.uid || resource.data.is_public == true);
-      allow create: if request.auth != null && request.resource.data.owner_uid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.owner_uid == request.auth.uid;
+      // 読み取り: 本人 OR 公開カード
+      allow read: if request.auth != null && (
+        resource.data.owner_uid == request.auth.uid ||
+        resource.data.is_public == true ||
+        resource.data.is_public_for_cheers == true
+      );
+      
+      // 作成: 本人のみ
+      allow create: if request.auth != null 
+        && request.resource.data.owner_uid == request.auth.uid;
+      
+      // 更新・削除: 本人のみ
+      allow update, delete: if request.auth != null 
+        && resource.data.owner_uid == request.auth.uid;
     }
 
-    // logs: 本人のみ
+    // ========================================
+    // logs: 達成ログ
+    // ========================================
     match /logs/{logId} {
-      allow read: if request.auth != null && resource.data.owner_uid == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.owner_uid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.owner_uid == request.auth.uid;
+      allow read: if request.auth != null 
+        && resource.data.owner_uid == request.auth.uid;
+      allow create: if request.auth != null 
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update, delete: if request.auth != null 
+        && resource.data.owner_uid == request.auth.uid;
     }
 
-    // categories, card_templates: 全員読み取り
+    // ========================================
+    // categories, card_templates: マスタデータ
+    // ========================================
     match /categories/{doc} {
       allow read: if request.auth != null;
+      allow write: if false;
     }
+    
     match /card_templates/{doc} {
       allow read: if request.auth != null;
+      allow write: if false;
     }
 
-    // matching_pools: 読み取りのみ
+    // ========================================
+    // matching_pools: マッチングプール
+    // ========================================
     match /matching_pools/{doc} {
       allow read: if request.auth != null;
       allow write: if false;  // Cloud Functionsのみ
     }
 
-    // reactions: 送信者は作成、受信者は読み取り・更新
+    // ========================================
+    // reactions: エール（リアクション）
+    // ========================================
     match /reactions/{reactionId} {
-      allow create: if request.auth != null &&
-        (request.resource.data.from_uid == request.auth.uid || request.resource.data.from_uid == "system");
-      allow read, update: if request.auth != null && resource.data.to_uid == request.auth.uid;
+      // 作成: 認証済み、かつ from_uid は自分自身
+      // ※ from_uid="system" は Cloud Functions (Admin SDK) のみ
+      allow create: if request.auth != null 
+        && request.resource.data.from_uid == request.auth.uid;
+      
+      // 読み取り: 送信者 OR 受信者
+      allow read: if request.auth != null && (
+        resource.data.from_uid == request.auth.uid ||
+        resource.data.to_uid == request.auth.uid
+      );
+      
+      // 更新: 受信者のみ（is_read更新用）
+      allow update: if request.auth != null 
+        && resource.data.to_uid == request.auth.uid;
+      
+      // 削除: 送信者のみ（アンドゥ用）
+      allow delete: if request.auth != null 
+        && resource.data.from_uid == request.auth.uid;
     }
 
-    // cheer_state: Cloud Functionsのみ
+    // ========================================
+    // cheer_state: AIエール状態管理
+    // ========================================
     match /cheer_state/{docId} {
       allow read: if request.auth != null && docId == request.auth.uid;
-      allow write: if false;
+      allow write: if false;  // Cloud Functionsのみ
     }
 
-    // cheer_send_state: 本人のみ
+    // ========================================
+    // cheer_send_state: 人間エール送信制限
+    // ========================================
     match /cheer_send_state/{docId} {
       allow read, write: if request.auth != null && docId == request.auth.uid;
+    }
+
+    // ========================================
+    // favorites: お気に入り
+    // ========================================
+    match /favorites/{docId} {
+      allow create: if request.auth != null 
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow read, delete: if request.auth != null 
+        && resource.data.owner_uid == request.auth.uid;
+      allow update: if false;
     }
   }
 }
 ```
 
-**セキュリティ懸念（Phase 10で対応予定）**:
-- `reactions` の `create` で `from_uid="system"` をクライアントから偽装可能
-- 対策: Cloud Functionsからの書き込みのみ許可する仕組みを導入
+**セキュリティ対策（Phase 10-Bで対応済み）**:
+- `reactions` の `create` で `from_uid` を `request.auth.uid` に限定（`from_uid="system"` はCloud Functionsのみ）
+- `cards` の `read` で非公開カード（`is_public=false` かつ `is_public_for_cheers=false`）を他ユーザーから保護
+- `categories` の `write` を完全禁止（メンテナンス用の一時緩和を解除）
 
 ---
 
