@@ -26,6 +26,7 @@
 | reactions | {自動生成} | リアクション（エール） | Phase 7/8 |
 | cheer_state | {uid} | AIエール状態管理 | Phase 7 |
 | cheer_send_state | {uid} | 人間エール送信制限 | Phase 8 |
+| favorites | {自動生成} | お気に入り | Phase 10-A |
 
 ---
 
@@ -270,6 +271,7 @@ card_templates/{templateId}
 | reactions | 受信者のみ | 送信者 or "system" | 受信者のみ |
 | cheer_state | 本人のみ | 禁止 | 禁止 |
 | cheer_send_state | 本人のみ | 本人のみ | 本人のみ |
+| favorites | 本人のみ | 本人のみ | 本人のみ（update禁止） |
 
 ### ⚠️ セキュリティ注意事項
 
@@ -307,3 +309,28 @@ node scripts/migratePublicSettings.js
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
 | 2025-12-08 | 1.0 | 初版作成。Phase 9.5時点のスキーマを文書化 |
+| 2025-12-08 | 1.1 | Phase 10-A: favoritesコレクション追加 |
+
+---
+
+## 9. favorites コレクション（Phase 10-A）
+
+お気に入りの仲間を管理します。エール提案で優先表示されます。
+
+```typescript
+favorites/{docId}
+{
+  doc_id: string;              // auto-generated
+  owner_uid: string;           // お気に入り登録した人のUID
+  target_uid: string;          // お気に入り対象のUID
+  target_card_id: string;      // 対象のカードID
+  category_l3: string;         // マッチングカテゴリ（検索用）
+  created_at: Timestamp;
+}
+```
+
+### 設計のポイント
+
+- **登録上限**: 10人
+- **相手への通知**: なし（プライバシー配慮）
+- **更新**: 不可（削除して再作成）

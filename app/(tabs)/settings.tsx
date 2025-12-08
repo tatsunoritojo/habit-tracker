@@ -375,6 +375,18 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push('/favorites')}
+          >
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>お気に入りの仲間</Text>
+              <Text style={styles.rowSubtitle}>
+                エール提案で優先表示されます
+              </Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* アカウントセクション */}

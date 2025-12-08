@@ -253,6 +253,18 @@ export type SentPair = {
 };
 
 // ========================================
+// Favorite（お気に入り）- Phase 10-A
+// ========================================
+export type Favorite = {
+  doc_id: string;              // auto-generated
+  owner_uid: string;           // お気に入り登録した人のUID
+  target_uid: string;          // お気に入り対象のUID
+  target_card_id: string;      // 対象のカードID
+  category_l3: string;         // マッチングカテゴリ（検索用）
+  created_at: Timestamp;
+};
+
+// ========================================
 // カテゴリL1マスタ
 // ========================================
 export type CategoryL1Id = 'health' | 'learning' | 'lifestyle' | 'creative' | 'mindfulness';
