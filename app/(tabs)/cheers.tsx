@@ -241,7 +241,7 @@ export default function CheersScreen() {
                     <View style={styles.cardHeader}>
                       <View style={styles.cardTitleRow}>
                         <Text style={styles.categoryName}>
-                          ★ {card.category_name_ja} の仲間
+                          ★ {card.category_name_ja.replace('（その他）', '')} の仲間
                           {card.is_comeback && <Text style={styles.comebackBadge}> 再開！</Text>}
                         </Text>
                         <FavoriteButton
@@ -275,7 +275,7 @@ export default function CheersScreen() {
                     <View style={styles.cardHeader}>
                       <View style={styles.cardTitleRow}>
                         <Text style={styles.categoryName}>
-                          {card.category_name_ja} の仲間
+                          {card.category_name_ja.replace('（その他）', '')} の仲間
                           {card.is_comeback && <Text style={styles.comebackBadge}> 再開！</Text>}
                         </Text>
                         <FavoriteButton

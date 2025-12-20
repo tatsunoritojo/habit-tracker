@@ -75,5 +75,5 @@ export default function RootLayout() {
   }
 
   // ここから先で通常の画面（index.tsx など）が表示される
-  return <Stack />;
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

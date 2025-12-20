@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useReactions, markReactionAsRead } from '../../src/hooks/useReactions';
 import { REACTIONS } from '../../src/types';
+import { CheerSender } from '../../src/components/CheerSender';
 
 export default function NotificationsScreen() {
   const { reactions, loading } = useReactions();
@@ -61,9 +62,9 @@ export default function NotificationsScreen() {
         renderItem={({ item }) => {
           const reactionInfo = REACTIONS[item.type];
           const cardTitle = item.card_title || '習慣カード';
-          const senderName = item.from_uid === 'system'
-            ? 'ハビット仲間'
-            : `${item.card_category_name || '習慣'}の仲間`;
+
+          // Icon logic: Use reaction icon instead of generic placeholder
+          const icon = reactionInfo.icon;
 
           return (
             <TouchableOpacity
@@ -73,16 +74,17 @@ export default function NotificationsScreen() {
               <View style={styles.reactionHeader}>
                 <View style={styles.senderRow}>
                   <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarText}>🟢</Text>
+                    <Text style={styles.avatarText}>{icon}</Text>
                   </View>
-                  <Text style={styles.senderName}>{senderName}</Text>
+                  <Text style={styles.senderName}>
+                    <CheerSender uid={item.from_uid} />
+                  </Text>
                 </View>
                 <Text style={styles.reactionTime}>
                   {item.created_at ? formatTime(item.created_at.toDate()) : ''}
                 </Text>
               </View>
               <View style={styles.reactionContent}>
-                <Text style={styles.reactionIcon}>{reactionInfo.icon}</Text>
                 <View style={styles.reactionText}>
                   <Text style={styles.reactionMessage}>
                     {item.message || reactionInfo.label}
@@ -100,7 +102,7 @@ export default function NotificationsScreen() {
   );
 }
 
-// 時刻フォーマット
+// 時刻フォーマット (Unified format: Relative for <7 days, Absolute date for others)
 function formatTime(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -192,15 +194,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarPlaceholder: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 20,
   },
   senderName: {
     fontSize: 14,
@@ -214,23 +217,20 @@ const styles = StyleSheet.create({
   reactionContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  reactionIcon: {
-    fontSize: 32,
-    marginRight: 12,
+    marginLeft: 40, // Indent content to align with text, not avatar
   },
   reactionText: {
     flex: 1,
   },
   reactionMessage: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
     color: '#333333',
     marginBottom: 4,
+    lineHeight: 22,
   },
   cardTitle: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: 13,
+    color: '#999999',
   },
   unreadBadge: {
     position: 'absolute',

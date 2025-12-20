@@ -6,14 +6,15 @@ export type Badge = {
     icon: string;
     description: string;
     achieved: boolean;
+    condition_value: number;
 };
 
 export const BADGE_DEFINITIONS: Omit<Badge, 'achieved'>[] = [
-    { id: 'bronze', name: '3日継続', icon: '🥉', description: '3日連続で達成しました！' },
-    { id: 'silver', name: '7日継続', icon: '🥈', description: '7日連続で達成しました！' },
-    { id: 'gold', name: '21日継続', icon: '🥇', description: '21日連続で達成しました！習慣化の達人です！' },
-    { id: 'resume', name: '復活の一歩', icon: '❤️‍🔥', description: '中断を乗り越えて3日連続達成！おかえりなさい！' },
-    { id: 'diamond', name: '100回記録', icon: '💎', description: '累計100回記録しました！素晴らしい継続力です！' },
+    { id: 'bronze', name: '3日継続', icon: '🥉', description: '3日連続で達成しました！', condition_value: 3 },
+    { id: 'silver', name: '7日継続', icon: '🥈', description: '7日連続で達成しました！', condition_value: 7 },
+    { id: 'gold', name: '21日継続', icon: '🥇', description: '21日連続で達成しました！習慣化の達人です！', condition_value: 21 },
+    { id: 'resume', name: '復活の一歩', icon: '❤️‍🔥', description: '中断を乗り越えて3日連続達成！おかえりなさい！', condition_value: 3 },
+    { id: 'diamond', name: '100回記録', icon: '💎', description: '累計100回記録しました！素晴らしい継続力です！', condition_value: 100 },
 ];
 
 export function getBadges(card: Card, logs: Log[]): Badge[] {
