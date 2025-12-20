@@ -26,7 +26,7 @@ export const useUserDisplayName = (uid: string | null | undefined): string => {
         try {
             // システムユーザー
             if (userId === 'system') {
-                setDisplayName('ハビットシステム');
+                setDisplayName('応援ボット');
                 return;
             }
 

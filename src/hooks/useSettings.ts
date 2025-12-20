@@ -15,7 +15,7 @@ export interface UserSettings {
 const DEFAULT_SETTINGS: UserSettings = {
     push_enabled: true,
     notification_mode: 'realtime',
-    batch_times: [],
+    batch_times: ['12:00', '18:00', '22:00'],
     quiet_hours_enabled: true,
     quiet_hours_start: '23:00',
     quiet_hours_end: '07:00',

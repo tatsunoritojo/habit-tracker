@@ -73,7 +73,12 @@ export default function ArchivedCardsScreen() {
                 <Text style={styles.cardIcon}>📦</Text>
                 <View style={styles.textContainer}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardDate}>作成日: {item.created_at?.toDate().toLocaleDateString()}</Text>
+                    <Text style={styles.cardDate}>アーカイブ日: {item.archived_at?.toDate().toLocaleDateString()}</Text>
+                    <View style={styles.statsContainer}>
+                        <Text style={styles.statsText}>累計 {item.total_logs || 0}回</Text>
+                        <Text style={styles.statsTextDivider}>|</Text>
+                        <Text style={styles.statsText}>最長 {item.longest_streak || 0}日連続</Text>
+                    </View>
                 </View>
             </View>
             <View style={styles.actionContainer}>
@@ -201,6 +206,21 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#999999',
         marginTop: 2,
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        marginTop: 4,
+        alignItems: 'center',
+    },
+    statsText: {
+        fontSize: 12,
+        color: '#4A90E2',
+        fontWeight: '500',
+    },
+    statsTextDivider: {
+        fontSize: 12,
+        color: '#CCCCCC',
+        marginHorizontal: 8,
     },
     actionContainer: {
         flexDirection: 'row',

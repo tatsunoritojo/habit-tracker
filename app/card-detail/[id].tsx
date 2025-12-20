@@ -164,6 +164,7 @@ export default function CardDetailScreen() {
               <View key={badge.id} style={[styles.badgeCard, !badge.achieved && styles.badgeLocked]}>
                 <Text style={styles.badgeIcon}>{badge.achieved ? badge.icon : '🔒'}</Text>
                 <Text style={styles.badgeName}>{badge.name}</Text>
+                {!badge.achieved && <Text style={styles.badgeCondition}>あと{badge.condition_value - (card.current_streak || 0)}日</Text>}
               </View>
             ))}
           </ScrollView>
@@ -450,6 +451,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#333333',
+    textAlign: 'center',
+  },
+  badgeCondition: {
+    fontSize: 10,
+    color: '#999999',
+    marginTop: 4,
     textAlign: 'center',
   },
 });

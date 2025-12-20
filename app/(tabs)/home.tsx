@@ -15,16 +15,23 @@ import { useCards } from '../../src/hooks/useCards';
 import { useStats } from '../../src/hooks/useStats';
 import { useReactions } from '../../src/hooks/useReactions';
 import { useCheerSuggestions } from '../../src/hooks/useCheerSuggestions';
-import { useUserDisplayName } from '../../src/hooks/useUserDisplayName';
+import { CheerSender } from '../../src/components/CheerSender';
 import { recordLog } from '../../src/services/logService';
 import { auth, db } from '../../src/lib/firebase';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { WelcomeBackModal } from '../../src/components/WelcomeBackModal';
 
-// エール送信者表示コンポーネント
-const CheerSender: React.FC<{ uid: string | null }> = ({ uid }) => {
-  const displayName = useUserDisplayName(uid);
-  return <>{displayName}</>;
+// エール送信者表示コンポーネント (Removed local definition)
+
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'health': return '💪';
+    case 'study': return '📚';
+    case 'life': return '🏠';
+    case 'creative': return '🎨';
+    case 'mindfulness': return '🧘';
+    default: return '📝';
+  }
 };
 
 export default function HomeScreen() {
@@ -165,6 +172,7 @@ export default function HomeScreen() {
   const renderCard = ({ item }: { item: any }) => {
     const isLoggedToday = item.last_log_date === today;
     const cheer = latestCheersByCard[item.card_id];
+    const categoryIcon = getCategoryIcon(item.category_l1);
 
     return (
       <TouchableOpacity
@@ -174,7 +182,7 @@ export default function HomeScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>📝</Text>
+          <Text style={styles.cardIcon}>{categoryIcon}</Text>
           <Text style={styles.cardTitle}>{item.title}</Text>
         </View>
         <View style={styles.cardStats}>
@@ -265,9 +273,16 @@ export default function HomeScreen() {
 
       {/* 統計エリア */}
       <View style={styles.statsArea}>
-        <Text style={styles.statsText}>
-          今週 {stats.weekDays}日 / 今月 {stats.monthDays}日
-        </Text>
+        <View style={styles.statsRow}>
+          <Text style={styles.statsLabel}>今週</Text>
+          <Text style={styles.statsValue}>{stats.weekDays}</Text>
+          <Text style={styles.statsUnit}>日</Text>
+          <Text style={styles.statsDivider}>/</Text>
+          <Text style={styles.statsLabel}>今月</Text>
+          <Text style={styles.statsValue}>{stats.monthDays}</Text>
+          <Text style={styles.statsUnit}>日</Text>
+        </View>
+        <Text style={styles.statsSubText}>継続は力なり！</Text>
       </View>
 
       {/* エール提案バナー (Phase 8) */}
@@ -385,16 +400,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    backgroundColor: '#F9FAFB', // Slight background
   },
-  statsText: {
-    fontSize: 16,
-    color: '#333333',
-    fontWeight: '500',
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  statsLabel: {
+    fontSize: 14,
+    color: '#666666',
+    marginRight: 4,
+  },
+  statsValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4A90E2',
+    marginRight: 2,
+  },
+  statsUnit: {
+    fontSize: 14,
+    color: '#666666',
+    marginRight: 12,
+  },
+  statsDivider: {
+    fontSize: 20,
+    color: '#CCCCCC',
+    marginRight: 12,
+    fontWeight: '300',
   },
   statsSubText: {
     fontSize: 12,
     color: '#999999',
-    marginTop: 4,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   banner: {
     margin: 16,

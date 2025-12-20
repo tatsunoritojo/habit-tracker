@@ -19,6 +19,7 @@ export default function SettingsScreen() {
   const [showQuietStartPicker, setShowQuietStartPicker] = useState(false);
   const [showQuietEndPicker, setShowQuietEndPicker] = useState(false);
   const [tempTime, setTempTime] = useState(new Date());
+  const [showUserId, setShowUserId] = useState(false);
 
   const handleNotificationToggle = async (value: boolean) => {
     try {
@@ -392,12 +393,19 @@ export default function SettingsScreen() {
         {/* アカウントセクション */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アカウント</Text>
-          <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setShowUserId(!showUserId)}
+            activeOpacity={0.7}
+          >
             <View style={styles.rowContent}>
               <Text style={styles.rowTitle}>ユーザーID</Text>
-              <Text style={styles.rowSubtitle}>{auth.currentUser?.uid || '未認証'}</Text>
+              <Text style={styles.rowSubtitle}>
+                {showUserId ? auth.currentUser?.uid : 'タップして表示'}
+              </Text>
             </View>
-          </View>
+            <Text style={styles.chevron}>{showUserId ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.row}
             onPress={() => router.push('/settings/account-deletion')}
