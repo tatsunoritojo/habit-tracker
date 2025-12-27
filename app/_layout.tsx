@@ -1,7 +1,7 @@
 // app/_layout.tsx
 import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ensureAnonymousLoginAndUser } from '../src/lib/firebase';
@@ -9,7 +9,10 @@ import { initializeNotifications, setupNotificationListeners } from '../src/lib/
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const [animationFinished, setAnimationFinished] = useState(false);
+  const [userTapped, setUserTapped] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const run = async () => {
@@ -40,17 +43,38 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!ready) {
-    // Firebase 初期化中は簡単なローディングを出す
+  // Firebase準備完了後にタップヒントをすぐにフェードイン
+  useEffect(() => {
+    if (ready) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [ready]);
+
+  if (!ready || !userTapped) {
+    // Firebase 初期化中 or ユーザーがタップするまで待機
+    // バックグラウンドでロード完了していればいつでもタップ可能
+    const canProceed = ready;
+
     return (
       <SafeAreaProvider>
-        <View
+        <TouchableOpacity
           style={{
             flex: 1,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#FFFFFF',
           }}
+          onPress={() => {
+            if (canProceed) {
+              setUserTapped(true);
+            }
+          }}
+          activeOpacity={canProceed ? 0.7 : 1}
+          disabled={!canProceed}
         >
           <LottieView
             source={require('../assets/Welcome.json')}
@@ -58,8 +82,45 @@ export default function RootLayout() {
             loop={false}
             style={{ width: 250, height: 250 }}
             resizeMode="contain"
+            onAnimationFinish={() => setAnimationFinished(true)}
           />
-        </View>
+
+          {canProceed && (
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                position: 'absolute',
+                bottom: 100,
+                alignItems: 'center',
+              }}
+            >
+              {/* ガイドテキスト - 上部に配置 */}
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: '600',
+                  color: '#666666',
+                  marginBottom: 16,
+                  zIndex: 1,
+                }}
+              >
+                タップして開始
+              </Text>
+
+              {/* Circle grow エフェクト */}
+              <LottieView
+                source={require('../assets/Circle grow.json')}
+                autoPlay
+                loop={true}
+                style={{
+                  width: 240,
+                  height: 240,
+                }}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          )}
+        </TouchableOpacity>
       </SafeAreaProvider>
     );
   }
