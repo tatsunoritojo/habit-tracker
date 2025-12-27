@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
     View,
     Text,
@@ -53,39 +53,44 @@ export default function SelectCardScreen() {
     const [isPublicForTemplate, setIsPublicForTemplate] = useState(true);
     const { cards: userCards } = useCards();
 
+    // L2カテゴリを取得（getL2Categories は useCallback でメモ化されている）
     const l2Categories = useMemo(() => {
-        if (!l1) return [];
+        if (!l1 || loadingCategories) return [];
         return getL2Categories(l1);
-    }, [l1, getL2Categories, loadingCategories]);
+    }, [l1, loadingCategories, getL2Categories]);
+
+    // buildSections を useCallback でメモ化し、関数型アップデートで無限ループを防止
+    const buildSections = useCallback(() => {
+        if (l2Categories.length === 0) return;
+
+        setSections((prevSections) => {
+            return l2Categories.map(cat => {
+                // このL2カテゴリに属するテンプレートと公開カードをフィルタリング
+                const catTemplates = templates.filter(t => t.category_l2 === cat.category_id);
+                const catPublicCards = publicCards.filter(c => c.category_l2 === cat.category_id);
+
+                // テンプレートと公開カードを統合
+                const allItems = [...catTemplates, ...catPublicCards];
+
+                // 既存のexpanded状態を維持（あれば）
+                const existing = prevSections.find(s => s.category.category_id === cat.category_id);
+
+                return {
+                    title: cat.name_ja,
+                    data: allItems,
+                    category: cat,
+                    expanded: existing ? existing.expanded : true, // デフォルト展開
+                };
+            });
+        });
+    }, [l2Categories, templates, publicCards]);
 
     // テンプレート、公開カード、L2カテゴリが更新されたらセクションを再構築
     useEffect(() => {
         if (!loadingCategories && !loadingTemplates && !loadingPublicCards && l2Categories.length > 0) {
             buildSections();
         }
-    }, [loadingCategories, loadingTemplates, loadingPublicCards, l2Categories, templates, publicCards]);
-
-    const buildSections = () => {
-        const newSections: SectionData[] = l2Categories.map(cat => {
-            // このL2カテゴリに属するテンプレートと公開カードをフィルタリング
-            const catTemplates = templates.filter(t => t.category_l2 === cat.category_id);
-            const catPublicCards = publicCards.filter(c => c.category_l2 === cat.category_id);
-
-            // テンプレートと公開カードを統合
-            const allItems = [...catTemplates, ...catPublicCards];
-
-            // 既存のexpanded状態を維持（あれば）
-            const existing = sections.find(s => s.category.category_id === cat.category_id);
-
-            return {
-                title: cat.name_ja,
-                data: allItems,
-                category: cat,
-                expanded: existing ? existing.expanded : true, // デフォルト展開
-            };
-        });
-        setSections(newSections);
-    };
+    }, [loadingCategories, loadingTemplates, loadingPublicCards, l2Categories, buildSections]);
 
     const toggleSection = (index: number) => {
         const newSections = [...sections];
