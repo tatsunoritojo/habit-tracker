@@ -34,7 +34,7 @@ if (!getApps().length) {
   app = getApps()[0]!;
 }
 
-// AsyncStorage を使って認証状態を永続化
+// 認証状態を永続化
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });

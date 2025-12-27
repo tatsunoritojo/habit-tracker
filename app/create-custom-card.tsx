@@ -29,6 +29,7 @@ import { useCards } from '../src/hooks/useCards';
 import { Category, CardTemplate } from '../src/types';
 import { calculateSimilarity } from '../src/utils/habitSimilarity';
 import { checkDuplicate } from '../src/utils/cardDuplicateChecker';
+import { SuccessAnimation } from '../src/components/SuccessAnimation';
 
 // Step定義
 type Step = 1 | 2 | 3;
@@ -82,6 +83,7 @@ export default function CreateCustomCardScreen() {
     const [showCheerHelp, setShowCheerHelp] = useState(false);
     const [showTemplateHelp, setShowTemplateHelp] = useState(false);
     const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
 
     // Step 1 -> 2: 検索実行
     const handleSearch = () => {
@@ -251,14 +253,18 @@ export default function CreateCustomCardScreen() {
                 created_at: now,
                 updated_at: now,
             });
-            router.replace('/(tabs)/home');
-            Alert.alert('成功', 'オリジナル習慣を作成しました！');
+            setShowSuccess(true);
         } catch (e) {
             console.error(e);
             Alert.alert('エラー', '作成に失敗しました');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleSuccessFinish = () => {
+        setShowSuccess(false);
+        router.replace('/(tabs)/home');
     };
 
     // --- UI Components for Steps ---
@@ -563,7 +569,14 @@ export default function CreateCustomCardScreen() {
                 {step === 2 && renderStep2()}
                 {step === 3 && renderStep3()}
             </KeyboardAvoidingView>
-        </SafeAreaView>
+            <SuccessAnimation
+                visible={showSuccess}
+                onFinish={handleSuccessFinish}
+                title="作成しました！"
+                subtitle="新しい習慣を始めましょう"
+                source={require('../assets/success-check-fill-FPiuzFU9Hy.json')}
+            />
+        </SafeAreaView >
     );
 }
 

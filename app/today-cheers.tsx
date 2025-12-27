@@ -38,7 +38,7 @@ export default function TodayCheersScreen() {
 
       grouped[reaction.type]?.push({
         icon,
-        message: reaction.message,
+        message: reaction.message || '',
         cardTitle,
       });
     });

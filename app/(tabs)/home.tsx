@@ -20,6 +20,8 @@ import { recordLog } from '../../src/services/logService';
 import { auth, db } from '../../src/lib/firebase';
 import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { WelcomeBackModal } from '../../src/components/WelcomeBackModal';
+import { SuccessAnimation } from '../../src/components/SuccessAnimation';
+import { BADGE_DEFINITIONS } from '../../src/utils/gamification';
 
 // エール送信者表示コンポーネント (Removed local definition)
 
@@ -45,6 +47,14 @@ export default function HomeScreen() {
 
   // Welcome Back State
   const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+
+  // Animation State
+  const [successAnim, setSuccessAnim] = useState<{
+    visible: boolean;
+    type: 'confetti' | 'trophy';
+    title: string;
+    subtitle: string;
+  }>({ visible: false, type: 'confetti', title: '', subtitle: '' });
 
   useEffect(() => {
     checkLastLogin();
@@ -151,7 +161,32 @@ export default function HomeScreen() {
               setRecording(true);
               try {
                 await recordLog(card.card_id, currentUser.uid);
-                Alert.alert('成功', '記録しました！');
+
+                // Animation Logic
+                const nextStreak = card.current_streak + 1;
+                const nextTotal = card.total_logs + 1;
+                let badge = null;
+
+                if (nextStreak === 3) badge = BADGE_DEFINITIONS.find(b => b.id === 'bronze');
+                else if (nextStreak === 7) badge = BADGE_DEFINITIONS.find(b => b.id === 'silver');
+                else if (nextStreak === 21) badge = BADGE_DEFINITIONS.find(b => b.id === 'gold');
+                else if (nextTotal === 100) badge = BADGE_DEFINITIONS.find(b => b.id === 'diamond');
+
+                if (badge) {
+                  setSuccessAnim({
+                    visible: true,
+                    type: 'trophy',
+                    title: 'バッジ獲得！',
+                    subtitle: `${badge.name}を達成しました！`
+                  });
+                } else {
+                  setSuccessAnim({
+                    visible: true,
+                    type: 'confetti',
+                    title: '記録しました！',
+                    subtitle: 'ナイス！その調子です！'
+                  });
+                }
               } catch (err) {
                 console.error('ログ記録エラー:', err);
                 Alert.alert('エラー', 'ログの記録に失敗しました');
@@ -318,6 +353,14 @@ export default function HomeScreen() {
       <WelcomeBackModal
         visible={showWelcomeBack}
         onClose={() => setShowWelcomeBack(false)}
+      />
+      <SuccessAnimation
+        visible={successAnim.visible}
+        onFinish={() => setSuccessAnim(prev => ({ ...prev, visible: false }))}
+        title={successAnim.title}
+        subtitle={successAnim.subtitle}
+        source={successAnim.type === 'trophy' ? require('../../assets/Trophy.json') : require('../../assets/Confetti.json')}
+        iconContent={successAnim.type === 'trophy' ? <Text style={{ fontSize: 40 }}>🏆</Text> : undefined}
       />
     </SafeAreaView>
   );
