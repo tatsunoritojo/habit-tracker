@@ -45,7 +45,6 @@ yarn-error.*
 log.txt
 nul
 *.jpg
-*.png
 
 # screenshots (development only)
 screenshots/
