@@ -3,7 +3,6 @@
     "name": "habit-tracker",
     "slug": "habit-tracker",
     "scheme": "habit-tracker",
-    "entryPoint": "expo-router/entry",
     "experiments": {
       "typedRoutes": true
     },
@@ -41,6 +40,12 @@
           "sounds": []
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "912f1c2d-fe04-4fe8-8069-8abf943b662e"
+      }
+    }
   }
 }
