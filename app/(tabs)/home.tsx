@@ -172,7 +172,8 @@ export default function HomeScreen() {
   const renderCard = ({ item }: { item: any }) => {
     const isLoggedToday = item.last_log_date === today;
     const cheer = latestCheersByCard[item.card_id];
-    const categoryIcon = getCategoryIcon(item.category_l1);
+    // カード固有のアイコンがあればそれを使用、なければカテゴリアイコン
+    const displayIcon = item.icon || getCategoryIcon(item.category_l1);
 
     return (
       <TouchableOpacity
@@ -182,7 +183,7 @@ export default function HomeScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>{categoryIcon}</Text>
+          <Text style={styles.cardIcon}>{displayIcon}</Text>
           <Text style={styles.cardTitle}>{item.title}</Text>
         </View>
         <View style={styles.cardStats}>

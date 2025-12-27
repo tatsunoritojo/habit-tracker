@@ -5,7 +5,6 @@ import {
     StyleSheet,
     TextInput,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     Alert,
     ActivityIndicator,
@@ -15,6 +14,7 @@ import {
     Modal,
     ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '../src/lib/firebase';

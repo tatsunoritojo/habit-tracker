@@ -4,13 +4,13 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     Alert,
     TextInput,
     ActivityIndicator,
     ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { deleteUser, GoogleAuthProvider, reauthenticateWithCredential, signInWithCredential } from 'firebase/auth';
 import { auth } from '../../src/lib/firebase';

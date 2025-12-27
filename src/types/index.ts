@@ -53,6 +53,7 @@ export type Card = {
 
   // カード情報
   title: string;
+  icon?: string; // 絵文字アイコン（テンプレートから継承 or カスタム選択）
   template_id: string;
   is_custom: boolean; // MVP: 常にfalse
 
