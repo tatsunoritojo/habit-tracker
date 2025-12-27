@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Modal } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, {
     useSharedValue,
@@ -64,7 +64,11 @@ export const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
 
     return (
         <Modal transparent visible={visible} animationType="fade">
-            <View style={styles.container}>
+            <TouchableOpacity
+                style={styles.container}
+                activeOpacity={1}
+                onPress={onFinish}
+            >
                 <View style={styles.content}>
                     {/* Lottie Animation Layer */}
                     <View style={styles.lottieContainer}>
@@ -90,7 +94,7 @@ export const SuccessAnimation: React.FC<SuccessAnimationProps> = ({
                         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
                     </Animated.View>
                 </View>
-            </View>
+            </TouchableOpacity>
         </Modal>
     );
 };
