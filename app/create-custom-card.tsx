@@ -103,7 +103,13 @@ export default function CreateCustomCardScreen() {
         const top5 = filtered.slice(0, 5).map(s => s.template);
 
         setSimilarTemplates(top5);
-        setStep(2);
+
+        // 類似が見つかったらStep 2へ、見つからなければStep 3（作成）へ直行
+        if (top5.length > 0) {
+            setStep(2);
+        } else {
+            handleProceedToCreate();
+        }
     };
 
     // Step 2: テンプレートを使用
@@ -281,7 +287,7 @@ export default function CreateCustomCardScreen() {
 
     const renderStep2 = () => (
         <View style={styles.stepContainer}>
-            <Text style={styles.questionText}>似ている習慣が見つかりました</Text>
+            <Text style={styles.questionText}>他の人はこんなカードを登録しています</Text>
             <Text style={styles.subText}>「{habitName}」での検索結果</Text>
 
             {similarTemplates.length > 0 ? (
