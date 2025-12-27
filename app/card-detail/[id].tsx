@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   TouchableOpacity,
   ScrollView,
@@ -14,6 +13,7 @@ import {
   Platform,
   ActionSheetIOS,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { deleteDoc, doc, updateDoc, Timestamp, collection, getDocs, writeBatch, query, where } from 'firebase/firestore';
 import { db } from '../../src/lib/firebase';

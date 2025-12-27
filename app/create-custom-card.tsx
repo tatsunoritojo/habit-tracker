@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TextInput,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     ScrollView,
     Alert,
     KeyboardAvoidingView,
     Platform,
+    LayoutAnimation,
+    UIManager,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Android用のLayoutAnimation有効化
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useRouter } from 'expo-router';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../src/lib/firebase';
@@ -48,11 +55,33 @@ export default function CreateCustomCardScreen() {
     const [selectedL2, setSelectedL2] = useState<string | null>(null);
     const [selectedL3, setSelectedL3] = useState<string | null>(null);
 
+    // アイコン選択（360種類以上、カテゴリ別）
+    const [selectedIcon, setSelectedIcon] = useState<string>('📝');
+    const iconCategories = [
+        { label: '記録・基本', icons: ['📝', '✅', '✔️', '⭐', '🌟', '✨', '💫', '🎯', '🏆', '🥇', '🏅', '📌', '📍', '💡', '🔔', '📣', '💬', '🔒', '🗓️', '📅', '🎖️', '🏵️', '📋', '📎', '🔑', '🗝️', '🔐', '🔓', '💯', '🔢', '🔤', '🔡', '🔠', '📍', '🎪', '🎟️', '🎫', '🏷️', '📑', '🗒️'] },
+        { label: '健康・運動', icons: ['💪', '🏃', '🚶', '🧘', '🏋️', '🚴', '🏊', '⚽', '🎾', '🧗', '🤸', '🤼', '🏌️', '🏄', '🤾', '🧖', '🎿', '⛳', '🥊', '🤽', '🏇', '⛷️', '🏂', '🪂', '🤺', '🥋', '🛹', '🛼', '🏈', '🏀', '🏐', '🏒', '🥍', '🏑', '🥏', '🎳', '🏓', '🥅', '⛸️', '🤿'] },
+        { label: '食事・栄養', icons: ['🍎', '🥗', '🥦', '💧', '🍳', '🍙', '☕', '🍵', '🥤', '🍽️', '🍇', '🍌', '🥑', '🥕', '🥬', '🍊', '🍓', '🥚', '🍖', '🥛', '🍞', '🥐', '🥨', '🧀', '🥩', '🍗', '🌮', '🌯', '🥙', '🍜', '🍲', '🍛', '🍱', '🥘', '🫕', '🥗', '🍿', '🧂', '🫒', '🧄'] },
+        { label: '睡眠・休息', icons: ['🌙', '😴', '🛏️', '⏰', '🌅', '🌄', '💤', '🛌', '🌃', '🌌', '🌘', '🌜', '🌛', '⭐', '🕯️', '🧭', '🏝️', '🧘', '💆', '🛀', '🌠', '🌉', '🌆', '🌇', '🏖️', '⛱️', '🌴', '🎑', '🌕', '🌖', '🌗', '🌑', '🌒', '🌓', '🌔', '🌝', '🌞', '☄️', '🪐', '🌍'] },
+        { label: '学習・仕事', icons: ['📚', '📖', '✍️', '💻', '🎓', '📊', '📈', '💼', '🔬', '🧠', '📝', '📁', '📂', '📧', '📱', '⌨️', '🖥️', '📰', '📡', '🧮', '🔭', '🔍', '🔎', '📐', '📏', '✂️', '📎', '🖊️', '🖋️', '✒️', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '🗃️', '🗄️'] },
+        { label: 'お金', icons: ['💰', '💵', '💳', '🏦', '📉', '🐷', '💴', '💶', '💷', '💸', '🪙', '💱', '🧾', '📀', '📋', '📌', '🏧', '💹', '📊', '📈', '🧮', '🪪', '💳', '🎰', '🎲', '💎', '👛', '👜', '💼', '🧳'] },
+        { label: '人間関係', icons: ['🤝', '👨‍👩‍👧', '💕', '❤️', '💬', '📞', '👋', '🙏', '👪', '👨‍👩‍👦', '👫', '👬', '👭', '🧑‍🤝‍🧑', '💌', '💍', '🎁', '🎉', '🤗', '💖', '💗', '💓', '💞', '💝', '💘', '💟', '❣️', '💔', '🫂', '👥', '👤', '🗣️', '👂', '👀', '🫶', '🤲', '👐', '🙌', '👏', '🤜'] },
+        { label: '趣味・創作', icons: ['🎨', '🎵', '🎸', '📷', '🎮', '🎬', '📺', '🌳', '🌸', '🌻', '🎹', '🎺', '🥁', '🎻', '🎷', '🎼', '🎭', '🖌️', '🖍️', '🧵', '🪡', '🧶', '🎪', '🎡', '🎢', '🎠', '🎰', '🎲', '🧩', '🪀', '🪁', '🃏', '🀄', '🎴', '📸', '📹', '🎥', '📽️', '🎞️', '📻'] },
+        { label: '生活・家事', icons: ['🏠', '🧹', '🧷', '🧺', '👕', '🪴', '🚿', '🪥', '🧴', '🧼', '🚽', '🛁', '🪒', '🧄', '🪣', '🛋️', '🛒', '🥣', '🍽️', '🪑', '🚪', '🪟', '🛖', '🏡', '🏘️', '🏚️', '🧊', '🪤', '🪠', '🧻', '🪞', '🪆', '🛏️', '🛎️', '🧳', '⏲️', '🕰️', '⌛', '⏳', '🧲'] },
+        { label: '自然・天気', icons: ['🌿', '🍀', '🌵', '🌲', '🌱', '🌺', '🌷', '🌹', '🌼', '🌾', '🌤️', '☀️', '🌥️', '⛅', '🌦️', '🌈', '☔', '❄️', '🌊', '🌋', '🍁', '🍂', '🍃', '🌾', '🌻', '🌸', '💐', '🌺', '🌼', '🌷', '⛄', '☃️', '🌨️', '🌧️', '⛈️', '🌩️', '💨', '💧', '💦', '🌬️'] },
+        { label: '動物', icons: ['🐶', '🐱', '🐰', '🐹', '🦊', '🐻', '🐼', '🐨', '🦁', '🐯', '🐘', '🦒', '🦓', '🦍', '🐦', '🦉', '🦋', '🐝', '🐢', '🐠', '🐟', '🐬', '🐳', '🦈', '🐙', '🦑', '🦐', '🦞', '🦀', '🐌', '🦂', '🦟', '🪲', '🐞', '🦗', '🪳', '🕷️', '🐍', '🦎', '🐊'] },
+        { label: 'その他', icons: ['🔥', '⚡', '🌈', '☀️', '🍀', '🎁', '🎉', '💎', '🦋', '🐕', '🚀', '✈️', '🏛️', '🗼', '🎰', '🎲', '♻️', '🔮', '🌍', '🌎', '🌏', '🗺️', '🧭', '🏔️', '⛰️', '🌋', '🗻', '🏕️', '🏜️', '🏝️', '🛸', '🚁', '🚂', '🚗', '🚕', '🚌', '🚎', '🏎️', '🚲', '🛵'] },
+    ];
+
     // 最終確認 - 公開設定を2つに分割
     const [isPublicForCheers, setIsPublicForCheers] = useState(true);
     const [isPublicForTemplate, setIsPublicForTemplate] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const { cards: userCards } = useCards();
+
+    // ヘルプ表示
+    const [showCheerHelp, setShowCheerHelp] = useState(false);
+    const [showTemplateHelp, setShowTemplateHelp] = useState(false);
+    const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
 
     // Step 1 -> 2: 検索実行
     const handleSearch = () => {
@@ -94,21 +123,31 @@ export default function CreateCustomCardScreen() {
 
     // Step 3: カテゴリ選択ロジック
     const handleSelectL1 = (id: string) => {
+        // 即座に選択状態を反映（青色表示）
         setSelectedL1(id);
         setSelectedL2(null);
         setSelectedL3(null);
         const l2 = getL2Categories(id);
         setL2Categories(l2);
         setL3Categories([]);
+        // 150ms後にアニメーション（選択状態を見せてから折りたたむ）
+        setTimeout(() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        }, 150);
     };
 
     const handleSelectL2 = (id: string) => {
+        // 即座に選択状態を反映（青色表示）
         setSelectedL2(id);
         // L3を自動的に :other に設定
         const autoL3 = `${id}:other`;
         setSelectedL3(autoL3);
         const l3 = getL3Categories(id);
         setL3Categories(l3);
+        // 150ms後にアニメーション（選択状態を見せてから折りたたむ）
+        setTimeout(() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        }, 150);
     };
 
     const handleSelectL3 = (id: string) => {
@@ -189,6 +228,7 @@ export default function CreateCustomCardScreen() {
                 category_l2: selectedL2,
                 category_l3: categoryL3,
                 title,
+                icon: selectedIcon,
                 template_id: 'custom',
                 is_custom: true,
                 is_public: false, // 後方互換性
@@ -278,85 +318,208 @@ export default function CreateCustomCardScreen() {
     );
 
     const renderStep3 = () => (
-        <ScrollView style={styles.stepContainer}>
-            <Text style={styles.questionText}>カテゴリを選択してください</Text>
-            <Text style={styles.subText}>「{habitName}」の分類</Text>
+        <ScrollView style={styles.stepContainer} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* 入力サマリー */}
+            <View style={styles.summaryCard}>
+                <Text style={styles.summaryIcon}>{selectedIcon}</Text>
+                <View style={styles.summaryContent}>
+                    <Text style={styles.summaryTitle}>{habitName}</Text>
+                    <Text style={styles.summarySubtitle}>
+                        {selectedL1 && l1Categories.find(c => c.category_id === selectedL1)?.name_ja}
+                        {selectedL2 && ` > ${l2Categories.find(c => c.category_id === selectedL2)?.name_ja || ''}`}
+                    </Text>
+                </View>
+            </View>
 
-            <Text style={styles.label}>大カテゴリ（必須）</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                {l1Categories.map(cat => (
-                    <TouchableOpacity
-                        key={cat.category_id}
-                        style={[styles.chip, selectedL1 === cat.category_id && styles.chipSelected]}
-                        onPress={() => handleSelectL1(cat.category_id)}
-                    >
-                        <Text style={[styles.chipText, selectedL1 === cat.category_id && styles.chipTextSelected]}>
-                            {cat.icon} {cat.name_ja}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-
-            {selectedL1 && (
+            {/* 大カテゴリ - 未選択なら展開、選択済みなら折りたたみ */}
+            {!selectedL1 ? (
                 <>
-                    <Text style={styles.label}>中カテゴリ（必須）</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
-                        {l2Categories.map(cat => (
+                    <Text style={styles.categoryLabel}>この習慣はどのカテゴリ？</Text>
+                    <View style={styles.categoryGrid}>
+                        {l1Categories.map(cat => (
                             <TouchableOpacity
                                 key={cat.category_id}
-                                style={[styles.chip, selectedL2 === cat.category_id && styles.chipSelected]}
-                                onPress={() => handleSelectL2(cat.category_id)}
+                                style={[styles.categoryCard, selectedL1 === cat.category_id && styles.categoryCardSelected]}
+                                onPress={() => handleSelectL1(cat.category_id)}
                             >
-                                <Text style={[styles.chipText, selectedL2 === cat.category_id && styles.chipTextSelected]}>
+                                <Text style={styles.categoryCardIcon}>{cat.icon}</Text>
+                                <Text style={[styles.categoryCardText, selectedL1 === cat.category_id && styles.categoryCardTextSelected]}>
                                     {cat.name_ja}
                                 </Text>
                             </TouchableOpacity>
                         ))}
-                    </ScrollView>
+                    </View>
+                </>
+            ) : (
+                /* 大カテゴリ選択済み - コンパクト表示 */
+                <TouchableOpacity
+                    style={styles.categoryCompact}
+                    onPress={() => {
+                        setSelectedL1(null);
+                        setSelectedL2(null);
+                    }}
+                >
+                    <View style={styles.categoryCompactContent}>
+                        <Text style={styles.categoryCompactIcon}>
+                            {l1Categories.find(c => c.category_id === selectedL1)?.icon}
+                        </Text>
+                        <View>
+                            <Text style={styles.categoryCompactText}>
+                                {l1Categories.find(c => c.category_id === selectedL1)?.name_ja}
+                            </Text>
+                            <Text style={styles.categoryCompactHint}>タップして変更</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.categoryCompactArrow}>✏️</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* 中カテゴリ - L1選択済み & L2未選択なら展開 */}
+            {selectedL1 && !selectedL2 && (
+                <>
+                    <Text style={styles.categoryLabel}>もう少し詳しく選んでください</Text>
+                    <View style={styles.categoryGrid}>
+                        {l2Categories.map(cat => (
+                            <TouchableOpacity
+                                key={cat.category_id}
+                                style={[styles.subcategoryCard, selectedL2 === cat.category_id && styles.subcategoryCardSelected]}
+                                onPress={() => handleSelectL2(cat.category_id)}
+                            >
+                                <Text style={[styles.subcategoryCardText, selectedL2 === cat.category_id && styles.subcategoryCardTextSelected]}>
+                                    {cat.name_ja}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                 </>
             )}
 
+            {/* 中カテゴリ選択済み - コンパクト表示 */}
             {selectedL2 && (
-                <View style={styles.finalSection}>
-                    {/* 公開設定: エールを受け取る */}
-                    <TouchableOpacity
-                        style={styles.row}
-                        onPress={() => setIsPublicForCheers(!isPublicForCheers)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.checkbox, isPublicForCheers && styles.checkboxChecked]}>
-                            {isPublicForCheers && <Text style={styles.checkmark}>✓</Text>}
-                        </View>
-                        <View style={styles.rowText}>
-                            <Text style={styles.rowLabel}>エールを受け取る</Text>
-                            <Text style={styles.rowSubtext}>他の人からエールをもらえます</Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    {/* 公開設定: テンプレートとして公開 */}
-                    <TouchableOpacity
-                        style={styles.row}
-                        onPress={() => setIsPublicForTemplate(!isPublicForTemplate)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.checkbox, isPublicForTemplate && styles.checkboxChecked]}>
-                            {isPublicForTemplate && <Text style={styles.checkmark}>✓</Text>}
-                        </View>
-                        <View style={styles.rowText}>
-                            <Text style={styles.rowLabel}>テンプレートとして公開</Text>
-                            <Text style={styles.rowSubtext}>他の人がこの習慣を選択できます</Text>
-                        </View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.primaryButton, submitting && styles.disabledButton]}
-                        onPress={handleCreateCustom}
-                        disabled={submitting}
-                    >
-                        <Text style={styles.primaryButtonText}>この習慣を始める</Text>
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={styles.subcategoryCompact}
+                    onPress={() => {
+                        setSelectedL2(null);
+                    }}
+                >
+                    <Text style={styles.subcategoryCompactText}>
+                        {l2Categories.find(c => c.category_id === selectedL2)?.name_ja}
+                    </Text>
+                    <Text style={styles.categoryCompactHint}>タップして変更</Text>
+                </TouchableOpacity>
             )}
+
+            {/* アイコン選択 - L1選択時から裏で事前読み込み */}
+            <View style={[styles.finalSection, !selectedL2 && styles.hiddenPreload]}>
+                <Text style={styles.label}>アイコン</Text>
+                <ScrollView style={styles.iconScrollView} nestedScrollEnabled>
+                    {iconCategories.map(category => (
+                        <View key={category.label} style={styles.iconCategoryBlock}>
+                            <Text style={styles.iconCategoryLabel}>{category.label}</Text>
+                            <View style={styles.iconGrid}>
+                                {category.icons.map((icon: string, index: number) => (
+                                    <TouchableOpacity
+                                        key={`${category.label}-${index}`}
+                                        style={[styles.iconOption, selectedIcon === icon && styles.iconOptionSelected]}
+                                        onPress={() => setSelectedIcon(icon)}
+                                    >
+                                        <Text style={styles.iconOptionText}>{icon}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    ))}
+                </ScrollView>
+
+                {/* 公開設定 - L2選択済みのみ表示 */}
+                {selectedL2 && (
+                    <>
+                        {/* 公開設定ヘッダー */}
+                        <Text style={styles.label}>公開設定</Text>
+
+                        {/* 公開設定: エールを受け取る */}
+                        <View style={styles.settingRow}>
+                            <TouchableOpacity
+                                style={styles.settingMain}
+                                onPress={() => setIsPublicForCheers(!isPublicForCheers)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.checkbox, isPublicForCheers && styles.checkboxChecked]}>
+                                    {isPublicForCheers && <Text style={styles.checkmark}>✓</Text>}
+                                </View>
+                                <View style={styles.rowText}>
+                                    <Text style={styles.rowLabel}>エールを受け取る</Text>
+                                    <Text style={styles.rowSubtext}>他の人からエールをもらえます</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.helpButton} onPress={() => setShowCheerHelp(!showCheerHelp)}>
+                                <Text style={styles.helpButtonText}>?</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {showCheerHelp && (
+                            <View style={styles.helpTooltip}>
+                                <Text style={styles.helpTooltipText}>
+                                    ONにすると、同じカテゴリの習慣を頑張っている人からエール（応援）を受け取れます。あなたの習慣名とニックネームが表示されます。
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* 公開設定: テンプレートとして公開 */}
+                        <View style={styles.settingRow}>
+                            <TouchableOpacity
+                                style={styles.settingMain}
+                                onPress={() => setIsPublicForTemplate(!isPublicForTemplate)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.checkbox, isPublicForTemplate && styles.checkboxChecked]}>
+                                    {isPublicForTemplate && <Text style={styles.checkmark}>✓</Text>}
+                                </View>
+                                <View style={styles.rowText}>
+                                    <Text style={styles.rowLabel}>テンプレートとして公開</Text>
+                                    <Text style={styles.rowSubtext}>他の人がこの習慣を選択できます</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.helpButton} onPress={() => setShowTemplateHelp(!showTemplateHelp)}>
+                                <Text style={styles.helpButtonText}>?</Text>
+                            </TouchableOpacity>
+                        </View>
+                        {showTemplateHelp && (
+                            <View style={styles.helpTooltip}>
+                                <Text style={styles.helpTooltipText}>
+                                    ONにすると、他のユーザーが習慣を選ぶときにあなたの習慣がおすすめとして表示されます。より多くの仲間と繋がれます。
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* プライバシー情報展開 */}
+                        <TouchableOpacity
+                            style={styles.privacyToggle}
+                            onPress={() => setShowPrivacyInfo(!showPrivacyInfo)}
+                        >
+                            <Text style={styles.privacyToggleText}>
+                                {showPrivacyInfo ? '▼' : '▶'} プライバシーについて
+                            </Text>
+                        </TouchableOpacity>
+                        {showPrivacyInfo && (
+                            <View style={styles.privacyCard}>
+                                <Text style={styles.privacyTitle}>🔒 あなたのプライバシー</Text>
+                                <Text style={styles.privacyItem}>• 習慣の記録内容（日時・回数）は公開されません</Text>
+                                <Text style={styles.privacyItem}>• 設定はいつでもカード詳細画面から変更できます</Text>
+                                <Text style={styles.privacyItem}>• ニックネームは設定画面で自由に変更可能です</Text>
+                                <Text style={styles.privacyItem}>• 両方OFFにすると完全プライベートモードになります</Text>
+                            </View>
+                        )}
+
+                        <TouchableOpacity
+                            style={[styles.primaryButton, submitting && styles.disabledButton]}
+                            onPress={handleCreateCustom}
+                            disabled={submitting}
+                        >
+                            <Text style={styles.primaryButtonText}>この習慣を始める</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+            </View>
         </ScrollView>
     );
 
@@ -374,6 +537,16 @@ export default function CreateCustomCardScreen() {
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>オリジナルを作成</Text>
                 <View style={{ width: 40 }} />
+            </View>
+
+            {/* Step Indicator */}
+            <View style={styles.stepIndicator}>
+                {[1, 2, 3].map((s) => (
+                    <View key={s} style={styles.stepIndicatorRow}>
+                        <View style={[styles.stepDot, step >= s && styles.stepDotActive]} />
+                        {s < 3 && <View style={[styles.stepLine, step > s && styles.stepLineActive]} />}
+                    </View>
+                ))}
             </View>
 
             <KeyboardAvoidingView
@@ -605,5 +778,288 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.5,
+    },
+    iconGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: 16,
+    },
+    iconOption: {
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+        backgroundColor: '#F0F0F0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    iconOptionSelected: {
+        backgroundColor: '#E3F2FD',
+        borderColor: '#4A90E2',
+    },
+    iconOptionText: {
+        fontSize: 24,
+    },
+    iconScrollView: {
+        maxHeight: 250,
+        marginBottom: 16,
+    },
+    iconCategoryBlock: {
+        marginBottom: 12,
+    },
+    iconCategoryLabel: {
+        fontSize: 12,
+        color: '#666666',
+        marginBottom: 6,
+        fontWeight: '600',
+    },
+    // Step Indicator
+    stepIndicator: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 12,
+        backgroundColor: '#F9FAFB',
+    },
+    stepIndicatorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    stepDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#E0E0E0',
+    },
+    stepDotActive: {
+        backgroundColor: '#4A90E2',
+    },
+    stepLine: {
+        width: 40,
+        height: 2,
+        backgroundColor: '#E0E0E0',
+        marginHorizontal: 4,
+    },
+    stepLineActive: {
+        backgroundColor: '#4A90E2',
+    },
+    // Summary Card
+    summaryCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0F7FF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#E3F2FD',
+    },
+    summaryIcon: {
+        fontSize: 40,
+        marginRight: 16,
+    },
+    summaryContent: {
+        flex: 1,
+    },
+    summaryTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333333',
+        marginBottom: 4,
+    },
+    summarySubtitle: {
+        fontSize: 14,
+        color: '#666666',
+    },
+    // Setting Row with Help
+    settingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    settingMain: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    helpButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#E8E8E8',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    helpButtonText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#666666',
+    },
+    helpTooltip: {
+        backgroundColor: '#FFF9E6',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+        marginLeft: 36,
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    helpTooltipText: {
+        fontSize: 13,
+        color: '#666666',
+        lineHeight: 18,
+    },
+    // Privacy Info
+    privacyToggle: {
+        paddingVertical: 12,
+        marginTop: 8,
+    },
+    privacyToggleText: {
+        fontSize: 14,
+        color: '#4A90E2',
+        fontWeight: '500',
+    },
+    privacyCard: {
+        backgroundColor: '#F5F5F5',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+    },
+    privacyTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333333',
+        marginBottom: 12,
+    },
+    privacyItem: {
+        fontSize: 13,
+        color: '#666666',
+        lineHeight: 22,
+    },
+    // Category Grid
+    categoryLabel: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333333',
+        marginBottom: 16,
+        marginTop: 8,
+    },
+    categoryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    categoryCard: {
+        width: '48%',
+        backgroundColor: '#F8F8F8',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#E0E0E0',
+    },
+    categoryCardSelected: {
+        backgroundColor: '#E3F2FD',
+        borderColor: '#4A90E2',
+    },
+    categoryCardIcon: {
+        fontSize: 32,
+        marginBottom: 8,
+    },
+    categoryCardText: {
+        fontSize: 14,
+        color: '#666666',
+        textAlign: 'center',
+        fontWeight: '500',
+    },
+    categoryCardTextSelected: {
+        color: '#4A90E2',
+        fontWeight: 'bold',
+    },
+    subcategoryCard: {
+        width: '48%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        padding: 14,
+        marginBottom: 10,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    subcategoryCardSelected: {
+        backgroundColor: '#E3F2FD',
+        borderColor: '#4A90E2',
+        borderWidth: 2,
+    },
+    subcategoryCardText: {
+        fontSize: 14,
+        color: '#666666',
+        textAlign: 'center',
+    },
+    subcategoryCardTextSelected: {
+        color: '#4A90E2',
+        fontWeight: 'bold',
+    },
+    // Category Compact (collapsed view)
+    categoryCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F0F7FF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#4A90E2',
+    },
+    categoryCompactContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    categoryCompactIcon: {
+        fontSize: 28,
+        marginRight: 12,
+    },
+    categoryCompactText: {
+        fontSize: 15,
+        color: '#333333',
+        fontWeight: '600',
+    },
+    categoryCompactHint: {
+        fontSize: 12,
+        color: '#4A90E2',
+        marginTop: 2,
+    },
+    categoryCompactArrow: {
+        fontSize: 18,
+    },
+    subcategoryCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        padding: 14,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#4A90E2',
+    },
+    subcategoryCompactText: {
+        fontSize: 15,
+        color: '#333333',
+        fontWeight: '500',
+    },
+    hiddenPreload: {
+        position: 'absolute',
+        left: -9999,
+        top: -9999,
+        opacity: 0,
     },
 });

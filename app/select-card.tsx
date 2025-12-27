@@ -4,12 +4,12 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
     StatusBar,
     SectionList,
     ActivityIndicator,
     Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../src/lib/firebase';
@@ -167,6 +167,7 @@ export default function SelectCardScreen() {
                 category_l2: selectedTemplate.category_l2,
                 category_l3: selectedTemplate.category_l3,
                 title: selectedTemplate.title_ja.trim(),
+                icon: selectedTemplate.icon, // テンプレートのアイコンを継承
                 template_id: selectedTemplate.template_id,
                 is_custom: false,
                 is_public: false, // 後方互換性
@@ -176,6 +177,7 @@ export default function SelectCardScreen() {
                 longest_streak: 0,
                 total_logs: 0,
                 last_log_date: '',
+                status: 'active',
                 created_at: now,
                 updated_at: now,
             };

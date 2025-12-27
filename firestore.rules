@@ -57,12 +57,10 @@ service cloud.firestore {
     // ========================================
     match /categories/{doc} {
       allow read: if request.auth != null;
-      allow write: if false;
     }
     
     match /card_templates/{doc} {
       allow read: if request.auth != null;
-      allow write: if false;
     }
 
     // ========================================
