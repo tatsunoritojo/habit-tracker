@@ -1,7 +1,8 @@
 // app/_layout.tsx
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, Text } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ensureAnonymousLoginAndUser } from '../src/lib/firebase';
 import { initializeNotifications, setupNotificationListeners } from '../src/lib/notifications';
@@ -51,8 +52,13 @@ export default function RootLayout() {
             backgroundColor: '#FFFFFF',
           }}
         >
-          <ActivityIndicator />
-          <Text style={{ marginTop: 10, color: '#666' }}>読み込み中...</Text>
+          <LottieView
+            source={require('../assets/Welcome.json')}
+            autoPlay
+            loop={false}
+            style={{ width: 250, height: 250 }}
+            resizeMode="contain"
+          />
         </View>
       </SafeAreaProvider>
     );
