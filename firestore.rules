@@ -18,11 +18,12 @@ service cloud.firestore {
     // cards: 習慣カード
     // ========================================
     match /cards/{cardId} {
-      // 読み取り: 本人 OR 公開カード
+      // 読み取り: 本人 OR 公開カード（エール用/テンプレート用）
       allow read: if request.auth != null && (
         resource.data.owner_uid == request.auth.uid ||
         resource.data.is_public == true ||
-        resource.data.is_public_for_cheers == true
+        resource.data.is_public_for_cheers == true ||
+        resource.data.is_public_for_template == true
       );
       
       // 作成: 本人のみ

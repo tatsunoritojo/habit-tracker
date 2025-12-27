@@ -26,8 +26,9 @@ export function useFavorites() {
             const user = auth.currentUser;
 
             if (!user) {
-                setFavorites([]);
-                setFavoriteCardIds(new Set());
+                // Only update if not already empty to avoid infinite re-renders
+                setFavorites((prev) => (prev.length === 0 ? prev : []));
+                setFavoriteCardIds((prev) => (prev.size === 0 ? prev : new Set()));
                 return;
             }
 

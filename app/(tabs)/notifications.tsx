@@ -4,12 +4,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReactions, markReactionAsRead } from '../../src/hooks/useReactions';
 import { REACTIONS } from '../../src/types';
 import { CheerSender } from '../../src/components/CheerSender';

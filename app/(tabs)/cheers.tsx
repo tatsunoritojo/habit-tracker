@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Alert,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuth } from 'firebase/auth';
 import { useCheerSuggestions } from '../../src/hooks/useCheerSuggestions';
 import { useUserDisplayName } from '../../src/hooks/useUserDisplayName';

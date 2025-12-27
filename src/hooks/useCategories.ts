@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase'; // Correct path
 import { Category } from '../types';
@@ -33,17 +33,27 @@ export const useCategories = () => {
         return () => unsubscribe();
     }, []);
 
-    // Helpers
-    const getL1Categories = () => categories.filter(c => c.level === 1);
+    // Helpers - useCallback でメモ化して無限ループを防止
+    const getL1Categories = useCallback(
+        () => categories.filter(c => c.level === 1),
+        [categories]
+    );
 
-    const getL2Categories = (l1Id: string) =>
-        categories.filter(c => c.level === 2 && c.parent_id === l1Id);
+    const getL2Categories = useCallback(
+        (l1Id: string) => categories.filter(c => c.level === 2 && c.parent_id === l1Id),
+        [categories]
+    );
 
     // L3 returns specific L3s OR the :other L3
-    const getL3Categories = (l2Id: string) =>
-        categories.filter(c => c.level === 3 && c.parent_id === l2Id);
+    const getL3Categories = useCallback(
+        (l2Id: string) => categories.filter(c => c.level === 3 && c.parent_id === l2Id),
+        [categories]
+    );
 
-    const getCategoryById = (id: string) => categories.find(c => c.category_id === id);
+    const getCategoryById = useCallback(
+        (id: string) => categories.find(c => c.category_id === id),
+        [categories]
+    );
 
     return {
         categories,
@@ -55,3 +65,4 @@ export const useCategories = () => {
         getCategoryById,
     };
 };
+
