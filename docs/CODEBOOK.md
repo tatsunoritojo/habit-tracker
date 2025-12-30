@@ -197,6 +197,7 @@ graph TD
 | **`useReactions`** | Subscribes to incoming cheers. | `reactions` collection | Returns `Reaction[]` |
 | **`useCheerSuggestions`** | Fetches potential cheer candidates. | `matching_pools` | Returns `CheerSuggestion[]` |
 | **`useStats`** | Calculates aggregated user stats. | `logs` collection (listener) | Returns `{ weekDays, monthDays }` |
+| **`useFavorites`** | Manages favorite users for cheer suggestions. | `favorites` collection | Returns `Favorite[]`, `isFavorite()`, `addFavorite()`, `removeFavorite()` |
 
 ### Core Services (`src/services/`)
 
@@ -219,5 +220,12 @@ graph TD
 #### `statsService.ts`
 **Role**: Pure logic for calculating dates and streaks.
 - Used by `logService` (server-side logic simulation) and `useStats`.
+
+#### `favoriteService.ts` (Phase 10-A)
+**Role**: CRUD operations for the `favorites` collection.
+- **`addFavorite(ownerUid, targetUid, targetCardId, categoryL3)`**: Registers a user as favorite. Enforces 10-user limit.
+- **`removeFavorite(ownerUid, targetCardId)`**: Un-favorites by card ID.
+- **`isFavoriteByCardId(ownerUid, cardId)`**: Quick check for UI highlighting.
+- **`getFavoritesByCategory(ownerUid, categoryL3)`**: Used by cheer suggestions to prioritize favorites.
 
 ---
